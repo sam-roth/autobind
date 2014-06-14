@@ -1,0 +1,20 @@
+
+
+general:
+    indent_text: "\t"
+cxx:
+    clang_flags: ['-std=c++1y', '-stdlib=libc++',
+#                   '-include', 'prefix.hpp.gch',
+                  '-I/opt/local/include',
+                  '-I/opt/local/Library/Frameworks/Python.framework/Versions/3.3/include/python3.3m',
+                  '-I/opt/local/libexec/llvm-3.3/include',
+                  '-DNDEBUG',
+                  '-D_GNU_SOURCE', '-D__STDC_LIMIT_MACROS', '-D__STDC_CONSTANT_MACROS',
+                  '-O3',
+#                   '-fno-exceptions',
+                  '-fno-rtti',
+                  '-fno-common',
+                  '-Woverloaded-virtual',
+                  '-Wcast-qual',
+                  ]
+

@@ -1,0 +1,23 @@
+syntax: glob
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+CMakeLists.txt
+Makefile
+.project
+.cproject
+.settings
+bin
+lib
+gen
+*.swp
+*.user.*
+*.user
+.DS_Store
+moc_*
+*.moc
+ui_*
+*_automoc.*
+*.o
+*.a
+*.dylib
