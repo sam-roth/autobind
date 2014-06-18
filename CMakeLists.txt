@@ -30,6 +30,7 @@ add_executable(
 	src/main.cpp
 	src/function.cpp
 	src/DiscoveryVisitor.cpp
+	src/type.cpp
 )
 
 target_link_libraries(

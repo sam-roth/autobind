@@ -15,12 +15,14 @@
 #define PY_KWARGS __attribute__((annotate("pykwargs")))
 #define PY_SYMIDENT __attribute__((annotate("pysymident")))
 #define PY_CONVERTER(pytype) __attribute__((annotate("py:convert:" #pytype)))
-
 #define PY_MODULE(name) namespace __attribute__((annotate("py:module:" #name))) {}
+#define PY_DOCSTRING(text) namespace __attribute__((annotate("pydocstring:" text))) { }
+
 
 #ifndef PY_NO_KEYWORDS
 	#define pyexport PY_EXPORT
 	#define pymodule PY_MODULE
+	#define pydocstring PY_DOCSTRING
 #endif
 
 
@@ -37,6 +39,9 @@ class PY_SYMIDENT SymbolIdentitiesPrivate
 template <class T>
 struct PyConversion
 {
+	static_assert(sizeof(T) != sizeof(T),
+	              "No specialization of PyConversion<> was found for this type. "
+	              "This indicates a problem with your inputs to autobind.");
 	// static T load(PyObject *);
 	// static PyObject *dump(const T &);
 };

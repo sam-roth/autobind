@@ -22,6 +22,18 @@ namespace
 }
 
 
+std::string processDocString(const std::string &docstring)
+{
+	auto result = std::regex_replace(docstring, std::regex("(^|\n)\\s*(///|\\*)"), "$1");
+	replace(result, "\\", "\\\\");
+	replace(result, "\n", "\\n");
+	replace(result, "\"", "\\\"");
+
+
+	return result;
+}
+
+
 Function::Function(std::string name, std::vector<Arg> args,
                    std::string docstring)
 : Export(std::move(name))
@@ -34,6 +46,31 @@ Function::Function(std::string name, std::vector<Arg> args,
 	replace(_implName, "::", "_ns_");
 	_implName += "_py_bind_impl";
 
+}
+void Function::codegenCall(std::ostream &out) const
+{
+
+
+	out << name();
+	codegenCallArgs(out);
+	out << ";\n";
+}
+void Function::codegenCallArgs(std::ostream &out) const
+{
+
+	using namespace streams;
+
+	auto argStream = stream(_args)
+		| enumerated()
+		| pairTransformed([](int i, const Arg &a) {
+			return a.requiresAdditionalConversion?
+				  str(boost::format("PyConversion<%1%>::load(arg%2%)") % a.cppQualTypeName % i)
+				: str(boost::format("arg%1%") % i);
+		})
+		| interposed(", ");
+
+
+	out << "(" << cat(argStream) << ")";
 }
 
 
@@ -91,22 +128,13 @@ void Function::codegenDefinition(std::ostream &out) const
 			{
 				if(_lineNo >= 0)
 					out << boost::format("#line %1% %2%\n") % _lineNo % std::quoted(_origFile);
-				auto argStream = stream(_args)
-					| enumerated()
-					| pairTransformed([](int i, const Arg &a) {
-						return a.requiresAdditionalConversion?
-							  str(boost::format("PyConversion<%1%>::load(arg%2%)") % a.cppQualTypeName % i)
-							: str(boost::format("arg%1%") % i);
-					})
-					| interposed(", ");
-
 
 				if(_returnType != "void")
 				{
 					out << _returnType << " result = ";
 				}
-
-				out << name() << "(" << cat(argStream) << ");\n";
+			
+				codegenCall(out);
 			}
 
 
@@ -139,11 +167,8 @@ void Function::codegenDefinition(std::ostream &out) const
 
 void Function::codegenMethodTable(std::ostream &out) const
 {
-	auto docstring = _docstring;
-	docstring = std::regex_replace(docstring, std::regex("(^|\n)\\s*(///|\\*)"), "$1");
-	replace(docstring, "\\", "\\\\");
-	replace(docstring, "\n", "\\n");
-	replace(docstring, "\"", "\\\"");
+	auto docstring = processDocString(_docstring);
+
 
 
 // 

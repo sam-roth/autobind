@@ -3,6 +3,8 @@
 #include "DiscoveryVisitor.hpp"
 #include "util.hpp"
 #include "transform.hpp"
+#include "type.hpp"
+
 
 namespace autobind {
 
@@ -52,6 +54,7 @@ class DiscoveryVisitor
 : public clang::RecursiveASTVisitor<DiscoveryVisitor>
 {
 	WrapperEmitter _wrapperEmitter;
+	bool _foundModule = false;
 	std::vector<clang::FunctionDecl *> _matches;
 	autobind::ModuleManager &_modmgr;
 	std::vector<autobind::Module *> _modstack;
@@ -61,7 +64,42 @@ public:
 	: _wrapperEmitter(context)
 	, _modmgr(modmgr)
 	{
-		
+				
+	}
+
+
+	bool checkInModule(clang::Decl *d)
+	{
+		if(_modstack.empty())
+		{
+			auto &diags = d->getASTContext().getDiagnostics();
+			unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error,
+			                                    "python exports must be preceded by module declaration");
+			diags.Report(d->getLocation(), id);
+			return false;
+		}
+
+		return true;
+	}
+
+	bool VisitCXXRecordDecl(clang::CXXRecordDecl *decl)
+	{
+
+		if(isPyExport(decl))
+		{
+			if(!checkInModule(decl)) return false;
+
+			auto name = decl->getQualifiedNameAsString();
+			auto unqualName = rsplit(name, "::").second;
+
+// 			assert(!_modstack.empty());
+			_modstack.back()->addExport(std::make_unique<Type>(unqualName,
+			                                                   name,
+			                                                   ""));
+
+		}
+
+		return true;
 	}
 
 	bool VisitNamespaceDecl(clang::NamespaceDecl *decl)
@@ -74,12 +112,42 @@ public:
 
 		if(!stream.empty())
 		{
+			if(_foundModule)
+			{
+				auto &diags = decl->getASTContext().getDiagnostics();
+				unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error,
+				                                    "redeclaration of module name");
+
+				diags.Report(decl->getLocation(), id);
+
+				return false;
+			}
+
 			auto parts = stream.front()->getAnnotation().rsplit(':');
 			_modstack.insert(_modstack.begin(), &_modmgr.module(parts.second));
+			_foundModule = true;
 
-			stream.next();
-			assert(stream.empty() && "multiple module names declared");
+// 
+//          	if(auto comment = decl->getASTContext().getRawCommentForAnyRedecl(decl->getASTContext().getTranslationUnitDecl()))
+// 			{
+// 				if(//sm.getFileID(comment->getSourceRange().getBegin()) == fid && 
+// 				   //std::abs(int(sm.getPresumedLineNumber(comment->getSourceRange().getEnd()) - curLine) < 3 &&
+// 				   comment->isDocumentation())
+// 				{
+// 					_modstack.front()->setDocstring(comment->getRawText(decl->getASTContext().getSourceManager()));
+// 				}
+// 			}
+		}
 
+		auto docstringStream = attributeStream(*decl)
+			| filtered([](auto a) { return a->getAnnotation().startswith("pydocstring:"); });
+
+		if(!docstringStream.empty())
+		{
+			auto ann = docstringStream.front()->getAnnotation();
+			checkInModule(decl);
+			
+			_modstack.back()->setDocstring(ann.split(':').second);
 		}
 
 
@@ -95,6 +163,15 @@ public:
 		if(isPyExport(decl))
 		{
 			_modstack.push_back(&_modmgr.module(decl->getNameAsString()));
+
+			if(auto comment = decl->getASTContext().getRawCommentForAnyRedecl(decl))
+			{
+				if(comment->isDocumentation())
+				{
+					_modstack.back()->setDocstring(comment->getRawText(decl->getASTContext().getSourceManager()));
+				}
+			}
+			
 			pushed = true;
 		}
 
@@ -115,8 +192,7 @@ public:
 		
 		if(isPyExport(decl))
 		{
-
-			assert(!_modstack.empty() && "python exports must be preceded by module declaration");
+			if(!checkInModule(decl)) return false;
 			_modstack.back()->addExport(_wrapperEmitter.function(decl));
 		}
 		

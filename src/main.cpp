@@ -2,7 +2,7 @@
 #include <iostream>
 #include <utility>
 #include <vector>
-
+#include <unordered_map>
 
 #include "clang/AST/AttrIterator.h"
 #include "clang/AST/Attr.h"
@@ -28,6 +28,23 @@
 
 namespace autobind {
 
+std::unordered_map<std::string, size_t> gensyms;
+
+std::string gensym(const std::string &prefix)
+{
+	auto it = gensyms.find(prefix);
+	if(it == gensyms.end())
+	{
+		gensyms[prefix] = 1;
+		return prefix + "$0";
+	}
+	else
+	{
+		size_t oldCount = it->second;
+		++it->second;
+		return prefix + "$" + std::to_string(oldCount);
+	}
+}
 
 static llvm::cl::OptionCategory toolCat("hgr options");
 // 

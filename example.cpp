@@ -1,22 +1,23 @@
 
+
 #include "autobind.hpp"
 
-pymodule(example);
+pymodule     (example);
+pydocstring  ("example functions to be consumed by python");
 
-template <class T>
-void printEach(const std::vector<T> &items)
+
+struct pyexport TestStruct
 {
-	for(const auto &item : items)
+	TestStruct()
 	{
-		std::cout << item << std::endl;
+		std::cout << "constructed " << this << "\n";
 	}
-}
 
-// extern template
-// pyexport void printEach<int>(const std::vector<int> &items);
-
-// template <>
-// pyexport void printEach<int>(const std::vector<int> &items);
+	~TestStruct()
+	{
+		std::cout << "destructed " << this << "\n";
+	}
+};
 
 /// run a program
 pyexport int system(const char *);
@@ -27,6 +28,8 @@ pyexport void foo(const std::string &s)
 	throw std::runtime_error("Foo is merely a metasyntactic variable. You must never invoke it, "
 	                         "especially with, \"" + s + "\".");
 }
+
+
 
 /// double each item in the list in place
 pyexport void doubleEach(python::ListRef list)
@@ -50,4 +53,3 @@ pyexport std::vector<int> doubled(const std::vector<int> &ints)
 
 	return v;
 }
-
