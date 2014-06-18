@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 2.6)
-project(hgr)
+project(autobind)
 
 include(PrecompiledHeader.cmake)
 
@@ -26,7 +26,7 @@ include_directories(
 
 
 add_executable(
-	hgr
+	autobind
 	src/main.cpp
 	src/function.cpp
 	src/DiscoveryVisitor.cpp
@@ -34,12 +34,12 @@ add_executable(
 )
 
 target_link_libraries(
-	hgr
+	autobind
 	${Boost_LIBRARIES}
 	${CLANG_LIBS}
 	${QT_LIBRARIES}
 	${LLVM_LIBS_CORE}
 )
 
-ADD_PRECOMPILED_HEADER(hgr src/prefix.hpp)
+ADD_PRECOMPILED_HEADER(autobind src/prefix.hpp)
 

@@ -46,7 +46,7 @@ std::string gensym(const std::string &prefix)
 	}
 }
 
-static llvm::cl::OptionCategory toolCat("hgr options");
+static llvm::cl::OptionCategory toolCat("autobind options");
 // 
 // class FindFunctionDeclsConsumer: public clang::ASTConsumer
 // {
