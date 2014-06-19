@@ -21,3 +21,9 @@ ui_*
 *.o
 *.a
 *.dylib
+*.gch*
+*.2014*
+*.dSYM
+*.bind.*
+*.so
+.stemdir.yaml
