@@ -28,9 +28,9 @@ include_directories(
 add_executable(
 	autobind
 	src/main.cpp
-	src/function.cpp
+	src/Function.cpp
 	src/DiscoveryVisitor.cpp
-	src/type.cpp
+	src/Type.cpp
 )
 
 target_link_libraries(

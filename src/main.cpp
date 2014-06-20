@@ -21,10 +21,8 @@
 
 #include "DiscoveryVisitor.hpp"
 
-// #include "symident.hpp"
-#include "transform.hpp"
 #include "util.hpp"
-#include "data.hpp"
+#include "Export.hpp"
 
 namespace autobind {
 
@@ -47,23 +45,6 @@ std::string gensym(const std::string &prefix)
 }
 
 static llvm::cl::OptionCategory toolCat("autobind options");
-// 
-// class FindFunctionDeclsConsumer: public clang::ASTConsumer
-// {
-// 	autobind::ModuleManager _modmgr;
-// public:
-// 
-// 	explicit FindFunctionDeclsConsumer(clang::ASTContext *context)
-// 	{
-// 	}
-// 
-// 	virtual void HandleTranslationUnit(clang::ASTContext &context)
-// 	{
-// 		discoverTranslationUnit(_modmgr, *context.getTranslationUnitDecl());
-// 		_modmgr.codegen(std::cout);
-// 	}
-// };
-// 
 
 template <class F>
 clang::ASTConsumer *newASTConsumer(F func)

@@ -6,7 +6,7 @@
 #include "stream.hpp"
 #include "streamindent.hpp"
 #include "printing.hpp"
-#include "data.hpp"
+#include "Export.hpp"
 
 #include <regex>
 
@@ -169,19 +169,6 @@ void Function::codegenMethodTable(std::ostream &out) const
 {
 	auto docstring = processDocString(_docstring);
 
-
-
-// 
-// 	for(auto it = docstring.begin(); it != docstring.end(); ++it)
-// 	{
-// 		if(!std::isspace(*it) && *it != '/' && *it != '*')
-// 		{
-// 			std::string s(it, docstring.end());
-// 			docstring = std::move(s);
-// 			break;
-// 		}
-// 	}
-// 
 	out << boost::format("{\"%1%\", %2%, METH_VARARGS, %3%},\n") 
 		% unqualifiedName()
 		% implName()

@@ -1,9 +1,10 @@
 
 
 #include "DiscoveryVisitor.hpp"
+#include "DataExtractor.hpp"
+
 #include "util.hpp"
-#include "transform.hpp"
-#include "type.hpp"
+#include "Type.hpp"
 
 
 namespace autobind {
@@ -53,7 +54,7 @@ bool isPyExport(clang::Decl *d)
 class DiscoveryVisitor
 : public clang::RecursiveASTVisitor<DiscoveryVisitor>
 {
-	WrapperEmitter _wrapperEmitter;
+	DataExtractor _wrapperEmitter;
 	bool _foundModule = false;
 	std::vector<clang::FunctionDecl *> _matches;
 	autobind::ModuleManager &_modmgr;
@@ -127,16 +128,6 @@ public:
 			_modstack.insert(_modstack.begin(), &_modmgr.module(parts.second));
 			_foundModule = true;
 
-// 
-//          	if(auto comment = decl->getASTContext().getRawCommentForAnyRedecl(decl->getASTContext().getTranslationUnitDecl()))
-// 			{
-// 				if(//sm.getFileID(comment->getSourceRange().getBegin()) == fid && 
-// 				   //std::abs(int(sm.getPresumedLineNumber(comment->getSourceRange().getEnd()) - curLine) < 3 &&
-// 				   comment->isDocumentation())
-// 				{
-// 					_modstack.front()->setDocstring(comment->getRawText(decl->getASTContext().getSourceManager()));
-// 				}
-// 			}
 		}
 
 		auto docstringStream = attributeStream(*decl)
