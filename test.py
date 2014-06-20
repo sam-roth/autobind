@@ -11,7 +11,7 @@ example.doubleEach(l)
 print(l)
 
 
-ts = example.TestStruct()
+ts = example.TestStruct(3)
 print(repr(ts))
 
 

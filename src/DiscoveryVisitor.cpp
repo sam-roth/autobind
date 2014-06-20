@@ -96,22 +96,54 @@ public:
 // 			assert(!_modstack.empty());
 			auto ty = std::make_unique<Type>(unqualName, name, "");
 			using namespace streams;
+
+			bool foundConstructor = false;
+
+			if(decl->hasTrivialCopyConstructor())
+			{
+				ty->setCopyAvailable();
+			}
+			
 			for(auto field : stream(decl->decls_begin(), decl->decls_end()))
 			{
-				if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field)
-			   		|| llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field)) 
+// 				if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field)
+// 			   		|| llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field)) 
+// 				{
+// 					continue;
+// 				}
+				if(auto constructor = llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field))
 				{
-					continue;
+					if(!foundConstructor && !constructor->isCopyOrMoveConstructor())
+					{
+						foundConstructor = true;
+						auto cdata = _wrapperEmitter.function(constructor);
+						cdata->setReturnType("void"); // prevents attempting to convert result type
+						ty->setConstructor(std::move(cdata));
+						std::cerr << "--> found constructor: "<< constructor->getQualifiedNameAsString() << "\n";
+					}
+					else if(constructor->isCopyConstructor())
+					{
+						ty->setCopyAvailable();
+					}
 				}
-
-				if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
+				else if(llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field))
+				{
+					// ignore
+				}
+				else if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
 				{
 					if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public)
 					{
+// 						std::cerr << "--> found method: " << method->getQualifiedNameAsString() << "\n";
 						auto mdata = _wrapperEmitter.method(method);
 						ty->addMethod(std::move(mdata));
 					}
+// 					else
+// 					{
+// 						std::cerr << "--> ignored method: "<< method->getQualifiedNameAsString() << "\n";
+// 					}
 				}
+
 			}
 
 			_modstack.back()->addExport(std::move(ty));

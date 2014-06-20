@@ -64,6 +64,7 @@ public:
 
 	virtual void codegenCall(std::ostream &) const;
 	virtual void codegenCallArgs(std::ostream &) const;
+	virtual void codegenTupleUnpack(std::ostream &) const;
 
 	virtual void codegenDeclaration(std::ostream &) const override;
 	virtual void codegenDefinition(std::ostream &) const override;

@@ -72,10 +72,15 @@ void Type::codegenDefinition(std::ostream &out) const
 		out << "try\n{\n";
 		{
 			IndentingOStreambuf indenter2(out);
+
+			const auto &con = constructor();
+
+			// unpack argument tuple
+			con.codegenTupleUnpack(out);
+
 			// call function
-		
 			out << "new((void *)&self->object) " << _cppQualTypeName;
-			constructor().codegenCallArgs(out);
+			con.codegenCallArgs(out);
 			out << ";\n";
 			out << "return (PyObject *) self;\n";
 		}
@@ -91,11 +96,30 @@ void Type::codegenDefinition(std::ostream &out) const
 		}
 
 		out << "}\n";
-
-		
 	
 	}
 	out << "}\n";
+
+	if(_copyAvailable)
+	{
+		const char *tpl = R"EOF(
+template <>
+struct PyConversion<{{typeName}}>
+{
+	static PyObject *dump(const {{typeName}} &obj);
+	static const {{typeName}} &load(PyObject *obj);
+
+};
+)EOF";
+
+		SimpleTemplateNamespace ns;
+		ns
+			.set("typeName", _cppQualTypeName);
+		StringTemplate(tpl).expand(out, ns);
+
+	}
+
+
 
 	out << "static int " << _structName << "_init(" << _structName << " *self, PyObject *args, PyObject *kw)\n{\n";
 	{
@@ -180,8 +204,8 @@ static PyTypeObject {{structName}}_Type = {
     0,                         /* tp_hash  */          
     0,                         /* tp_call */           
 	python::protocols::detail::StrConverter<{{cppName}}, {{structName}}>::get(),             /* tp_str */
-    0,                         /* tp_getattro */       
-    0,                         /* tp_setattro */       
+    PyObject_GenericGetAttr,                         /* tp_getattro */       
+    PyObject_GenericSetAttr,                         /* tp_setattro */       
     0,                         /* tp_as_buffer */      
     Py_TPFLAGS_DEFAULT |                               
         Py_TPFLAGS_BASETYPE,   /* tp_flags */          
@@ -213,9 +237,58 @@ static PyTypeObject {{structName}}_Type = {
 		.set("name", name())
 		.set("reprName", reprName)
 		.set("strName", strName)
-		.set("cppName", _cppQualTypeName);
+		.set("cppName", _cppQualTypeName)
+		.set("typeName", _cppQualTypeName);
 
 	StringTemplate(typeObjectFormatString).expand(out, names);
+
+
+	if(_copyAvailable)
+	{
+		const char *templateString = R"EOF(
+PyObject * PyConversion<{{typeName}}>::dump(const {{typeName}} &obj)
+{
+	PyTypeObject *ty = &{{structName}}_Type;
+
+	{{structName}} *self = ({{structName}} *)ty->tp_alloc(ty, 0);
+
+	try
+	{
+		new ((void *) &self->object) {{typeName}}(obj);
+		return (PyObject *)self;
+	}
+	catch(python::Exception &)
+	{
+		return 0;
+	}
+	catch(std::exception &exc)
+	{
+		return PyErr_Format(PyExc_RuntimeError, "%s", exc.what());
+	}
+}
+
+const {{typeName}} &PyConversion<{{typeName}}>::load(PyObject *obj)
+{
+	int rv = PyObject_IsInstance(obj, (PyObject *) &{{structName}}_Type);
+	if(rv < 0)
+	{
+		throw python::Exception();
+	}
+
+	if(rv == 1)
+	{
+		return (({{structName}} *) obj)->object;
+	}
+	else
+	{
+		throw std::runtime_error("Expected an instance of {{typeName}}.");
+	}
+}
+		)EOF";
+
+		StringTemplate(templateString).expand(out, names);
+	}
+
 
 }
 

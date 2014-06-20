@@ -78,6 +78,46 @@ void Function::codegenDeclaration(std::ostream &out) const
 {
 	out << boost::format(FunctionPrototype) % _implName % selfTypeName() << ";\n";
 }
+
+void Function::codegenTupleUnpack(std::ostream &out) const
+{
+	using namespace streams;
+	// declare variables
+	for(const auto &pair : stream(_args) | enumerated())
+	{
+		if(pair.second.requiresAdditionalConversion)
+		{
+			out << "PyObject *";
+		}
+		else
+		{
+			out << pair.second.cppQualTypeName << " ";
+		}
+
+		out << "arg" << pair.first << ";\n";
+	}
+	
+	// call PyArg_ParseTuple
+	auto kwlistStream = stream(_args)
+		| transformed([](const Arg &a) { return "\"" + a.argName + "\", "; });
+
+	out << boost::format("static const char *kwlist[] = {%1%0};\n") % cat(kwlistStream);
+
+	auto argStream = count()
+		| take(_args.size())
+		| transformed([](int i) { return boost::format(", &arg%d") % i; });
+
+
+
+	auto formatStream = stream(_args)
+		| transformed([](const Arg &a) { return a.parseTupleFmt; });
+
+
+	out << boost::format("if(!PyArg_ParseTupleAndKeywords(args, kw, \"%s\", (char **)kwlist%s))\n"
+	                     "    return 0;\n") % cat(formatStream) % cat(argStream);
+
+}
+
 void Function::codegenDefinitionBody(std::ostream &out) const
 {
 	// emit "try" block
@@ -127,47 +167,7 @@ void Function::codegenDefinition(std::ostream &out) const
 
 	{
 		IndentingOStreambuf indenter(out);
-
-		// declare variables
-		for(const auto &pair : stream(_args) | enumerated())
-		{
-			if(pair.second.requiresAdditionalConversion)
-			{
-				out << "PyObject *";
-			}
-			else
-			{
-				out << pair.second.cppQualTypeName << " ";
-			}
-
-			out << "arg" << pair.first << ";\n";
-		}
-
-
-		// call PyArg_ParseTuple
-
-		{
-
-			auto kwlistStream = stream(_args)
-				| transformed([](const Arg &a) { return "\"" + a.argName + "\", "; });
-
-			out << boost::format("static const char *kwlist[] = {%1%0};\n") % cat(kwlistStream);
-
-			auto argStream = count()
-				| take(_args.size())
-				| transformed([](int i) { return boost::format(", &arg%d") % i; });
-
-
-
-			auto formatStream = stream(_args)
-				| transformed([](const Arg &a) { return a.parseTupleFmt; });
-
-
-			out << boost::format("if(!PyArg_ParseTupleAndKeywords(args, kw, \"%s\", (char **)kwlist%s))\n"
-			                     "    return 0;\n") % cat(formatStream) % cat(argStream);
-		}
-
-		
+		codegenTupleUnpack(out);
 		codegenDefinitionBody(out);
 	}
 

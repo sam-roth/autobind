@@ -19,7 +19,7 @@ pyexport void kwarg_parrot(int voltage,
 
 struct pyexport TestStruct
 {
-	TestStruct()
+	TestStruct(int integer)
 	{
 		std::cout << "constructed " << this << "\n";
 	}
