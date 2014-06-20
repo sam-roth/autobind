@@ -8,6 +8,7 @@
 
 #include <clang/AST/Type.h>
 #include <clang/AST/ASTContext.h>
+#include <clang/AST/Attr.h>
 
 #include "util.hpp"
 #include "streamindent.hpp"
@@ -97,7 +98,18 @@ struct DataExtractor
 
 	std::unique_ptr<Method> method(clang::CXXMethodDecl *decl)
 	{
-		return genericFunction<Method>(decl);
+		auto result = genericFunction<Method>(decl);
+
+		for(auto attr : streams::stream(decl->specific_attr_begin<clang::AnnotateAttr>(),
+		                                decl->specific_attr_end<clang::AnnotateAttr>()))
+		{
+			if(attr->getAnnotation().startswith("pyoperator:"))
+			{
+				result->setOperatorName(attr->getAnnotation().rsplit(':').second);
+			}
+		}
+
+		return result;
 	}
 };
 

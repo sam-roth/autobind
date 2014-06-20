@@ -9,6 +9,7 @@ namespace autobind {
 class Method: public Function
 {
 	std::string _selfTypeName;
+	std::string _operatorName;
 public:
 
 	using Function::Function;
@@ -18,8 +19,18 @@ public:
 		_selfTypeName = s;
 	}
 
+	const std::string &operatorName() const { return _operatorName; }
+
 	virtual const char *selfTypeName() const { return _selfTypeName.c_str(); }
 	virtual void codegenCall(std::ostream &) const override;
+
+// 	virtual void codegenOperatorDefinition(std::ostream &) const;
+// 	virtual void codegenMethodTable(std::ostream &) const override;
+
+	virtual void setOperatorName(const std::string &name)
+	{
+		_operatorName = name;
+	}
 };
 
 } // autobind

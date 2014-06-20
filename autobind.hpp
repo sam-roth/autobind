@@ -17,12 +17,13 @@
 #define PY_CONVERTER(pytype) __attribute__((annotate("py:convert:" #pytype)))
 #define PY_MODULE(name) namespace __attribute__((annotate("py:module:" #name))) {}
 #define PY_DOCSTRING(text) namespace __attribute__((annotate("pydocstring:" text))) { }
-
+#define PY_OPERATOR(name) __attribute__((annotate("pyoperator:" #name)))
 
 #ifndef PY_NO_KEYWORDS
 	#define pyexport PY_EXPORT
 	#define pymodule PY_MODULE
 	#define pydocstring PY_DOCSTRING
+	#define pyoperator PY_OPERATOR
 #endif
 
 
@@ -46,9 +47,145 @@ struct PyConversion
 	// static PyObject *dump(const T &);
 };
 
-
 namespace python
 {
+	namespace protocols
+	{
+		namespace detail
+		{
+			struct UnimplTag { };
+
+			template <class U, U>
+			class Check
+			{
+
+			};
+
+			// based on http://www.gockelhut.com/c++/articles/has_member
+			template <class T, class NameGetter>
+			class HasMemberImpl
+			{
+				typedef char matched;
+				typedef long unmatched;
+
+				template <class C>
+				static matched f(typename NameGetter::template get<C> *);
+
+				template <class C>
+				static unmatched f(...);
+
+			public:
+				static const bool value = (sizeof(f<T>(0)) == sizeof(matched));
+			};
+
+			template <class T, class NameGetter>
+			class HasMember: public std::integral_constant<
+				bool,
+				HasMemberImpl<T, NameGetter>::value
+			>
+			{ };
+
+
+			struct CheckHasRepr
+			{
+				template <class T, std::string(T::*)() const = &T::repr>
+				struct get { };
+			};
+
+			template <class T>
+			class HasRepr: public HasMember<T, CheckHasRepr> { };
+			struct CheckHasStr
+			{
+				template <class T, std::string(T::*)() const = &T::str>
+				struct get { };
+			};
+
+			template <class T>
+			class HasStr: public HasMember<T, CheckHasStr> { };
+		}
+
+		template <class T, class Enable=void>
+		struct Str: public detail::UnimplTag
+		{
+
+		};
+
+
+		template <class T>
+		struct Str<T, typename std::enable_if<detail::HasStr<T>::value>::type>
+		{
+			static std::string convert(const T &x)
+			{
+				return x.str();
+			}
+		};
+		
+		template <class T, class Enable=void>
+		struct Repr: public detail::UnimplTag
+		{
+		};
+
+		template <class T>
+		struct Repr<T, typename std::enable_if<detail::HasRepr<T>::value>::type>
+		{
+			static std::string convert(const T &x)
+			{
+				return x.repr();
+			}
+		};
+
+
+		namespace detail
+		{
+			template <class T, class U, class Enable=void>
+			struct StrConverter;
+
+			template <class T, class U>
+			struct StrConverter<T, U, typename std::enable_if<std::is_base_of<UnimplTag, Str<T>>::value>::type>
+			{
+				static reprfunc get() { return 0; }
+			};
+
+
+			template <class T, class U>
+			struct StrConverter<T, U, typename std::enable_if<!std::is_base_of<UnimplTag, Str<T>>::value>::type>
+			{
+				static PyObject *converter(U *self)
+				{
+					auto result = Str<T>::convert(self->object);
+					return PyConversion<decltype(result)>::dump(result);
+				}
+
+				static reprfunc get() { return (reprfunc) &converter; }
+			};
+
+			template <class T, class U, class Enable=void>
+			struct ReprConverter;
+
+			template <class T, class U>
+			struct ReprConverter<T, U, typename std::enable_if<std::is_base_of<UnimplTag, Repr<T>>::value>::type>
+			{
+				static reprfunc get() { return 0; }
+			};
+
+
+			template <class T, class U>
+			struct ReprConverter<T, U, typename std::enable_if<!std::is_base_of<UnimplTag, Repr<T>>::value>::type>
+			{
+				static PyObject *converter(U *self)
+				{
+					auto result = Repr<T>::convert(self->object);
+					return PyConversion<decltype(result)>::dump(result);
+				}
+
+				static reprfunc get() { return (reprfunc) &converter; }
+			};
+
+
+
+		}
+
+	}
 
 	namespace
 	{

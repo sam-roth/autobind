@@ -57,6 +57,7 @@ public:
 	const std::vector<Arg> &args() const { return _args; }
 	const std::string &implName() const { return _implName; }
 	const std::string &unqualifiedName() const { return _unqualifiedName; }
+	const std::string &docstring() const { return _docstring; }
 
 	virtual const char *selfTypeName() const { return "PyObject"; }
 
@@ -66,6 +67,7 @@ public:
 
 	virtual void codegenDeclaration(std::ostream &) const override;
 	virtual void codegenDefinition(std::ostream &) const override;
+	virtual void codegenDefinitionBody(std::ostream &) const;
 	virtual void codegenMethodTable(std::ostream &) const override;
 
 	void setSourceLocation(int lineNo, const std::string &origFile)

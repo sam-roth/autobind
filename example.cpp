@@ -1,9 +1,14 @@
 
 
 #include "autobind.hpp"
+#include <boost/format.hpp>
+#include <map>
 
 pymodule     (example);
 pydocstring  ("example functions to be consumed by python");
+
+
+
 
 
 struct pyexport TestStruct
@@ -23,6 +28,47 @@ struct pyexport TestStruct
 		std::cout << "destructed " << this << "\n";
 	}
 };
+
+struct pyexport StringMap
+{
+	std::map<std::string, std::string> m;
+
+	void set(const std::string &lhs, const std::string &rhs)
+	{
+		m[lhs] = rhs;
+	}
+
+	std::string get(const std::string &key) const
+	{
+		return m.at(key);
+	}
+
+
+	std::string repr() const
+	{
+		bool first = true;
+		std::string result = "{";
+		for(const auto &item : m)
+		{
+			if(first)
+			{
+				first = false;
+			}
+			else
+			{
+				result += ", ";
+			}
+
+			result += item.first + ": " + item.second;
+		}
+		result += "}";
+
+		return result;
+	}
+};
+
+
+
 
 /// run a program
 pyexport int system(const char *);
@@ -79,5 +125,15 @@ public:
 		return _first + _last;
 	}
 
-
 };
+
+template <>
+struct python::protocols::Str<Noddy>
+{
+	static std::string convert(const Noddy &n)
+	{
+		return "Noddy( " + n.name() + ")";
+	}
+};
+
+

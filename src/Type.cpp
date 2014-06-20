@@ -2,6 +2,7 @@
 #include "Type.hpp"
 #include "Method.hpp"
 #include "util.hpp"
+#include "StringTemplate.hpp"
 
 namespace autobind {
 
@@ -131,52 +132,90 @@ void Type::codegenDefinition(std::ostream &out) const
 	out << "};\n";
 
 
-	out << boost::format(
-		"static PyTypeObject %1%_Type = {                      \n"
-		"    PyVarObject_HEAD_INIT(NULL, 0)                     \n"
-		"    \"%2%.%3%\",             /* tp_name */           \n"
-		"    sizeof(%1%),             /* tp_basicsize */      \n"
-		"    0,                         /* tp_itemsize */       \n"
-		"    (destructor)%1%_dealloc, /* tp_dealloc */        \n"
-		"    0,                         /* tp_print */          \n"
-		"    0,                         /* tp_getattr */        \n"
-		"    0,                         /* tp_setattr */        \n"
-		"    0,                         /* tp_reserved */       \n"
-		"    0,                         /* tp_repr */           \n"
-		"    0,                         /* tp_as_number */      \n"
-		"    0,                         /* tp_as_sequence */    \n"
-		"    0,                         /* tp_as_mapping */     \n"
-		"    0,                         /* tp_hash  */          \n"
-		"    0,                         /* tp_call */           \n"
-		"    0,                         /* tp_str */            \n"
-		"    0,                         /* tp_getattro */       \n"
-		"    0,                         /* tp_setattro */       \n"
-		"    0,                         /* tp_as_buffer */      \n"
-		"    Py_TPFLAGS_DEFAULT |                               \n"
-		"        Py_TPFLAGS_BASETYPE,   /* tp_flags */          \n"
-		"    \"\",           /* tp_doc */            \n"
-		"    0,                         /* tp_traverse */       \n"
-		"    0,                         /* tp_clear */          \n"
-		"    0,                         /* tp_richcompare */    \n"
-		"    0,                         /* tp_weaklistoffset */ \n"
-		"    0,                         /* tp_iter */           \n"
-		"    0,                         /* tp_iternext */       \n"
-		"    %1%_methods,             /* tp_methods */        \n"
-		"    0,             /* tp_members */        \n"  // TODO:
-		"    0,                         /* tp_getset */         \n"
-		"    0,                         /* tp_base */           \n"
-		"    0,                         /* tp_dict */           \n"
-		"    0,                         /* tp_descr_get */      \n"
-		"    0,                         /* tp_descr_set */      \n"
-		"    0,                         /* tp_dictoffset */     \n"
-		"    (initproc)%1%_init,      /* tp_init */           \n"
-		"    0,                         /* tp_alloc */          \n"
-		"    %1%_new,                 /* tp_new */            \n"
-		"};                                                     \n"
-		"                                                       \n")
-		% _structName % _moduleName % name();
+	std::string reprName = "0";
+	std::string strName = "0";
 
+	for(const auto &method : _methods)
+	{
+		if(method->operatorName() == "repr" || method->operatorName() == "str")
+		{
+			out << boost::format("static PyObject *%1%_%2%(%1% *self)\n{\n")
+				% _structName
+				% method->operatorName();
 
+			{
+				IndentingOStreambuf indenter(out);
+				method->codegenDefinitionBody(out);
+			}
+
+			out << "}\n";
+
+			if(method->operatorName() == "repr")
+			{
+				reprName = _structName + "_repr";
+			}
+			else
+			{
+				strName = _structName + "_str";
+			}
+		}
+
+	}
+
+	const char *typeObjectFormatString = R"EOF(
+static PyTypeObject {{structName}}_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)                     
+	"{{moduleName}}.{{name}}",                 /* tp_name */
+	sizeof({{structName}}),               /* tp_basicsize */
+    0,                         /* tp_itemsize */       
+	(destructor){{structName}}_dealloc,   /* tp_dealloc */
+    0,                         /* tp_print */          
+    0,                         /* tp_getattr */        
+    0,                         /* tp_setattr */        
+    0,                         /* tp_reserved */       
+	python::protocols::detail::ReprConverter<{{cppName}}, {{structName}}>::get(),             /* tp_repr */
+    0,                         /* tp_as_number */      
+    0,                         /* tp_as_sequence */    
+    0,                         /* tp_as_mapping */     
+    0,                         /* tp_hash  */          
+    0,                         /* tp_call */           
+	python::protocols::detail::StrConverter<{{cppName}}, {{structName}}>::get(),             /* tp_str */
+    0,                         /* tp_getattro */       
+    0,                         /* tp_setattro */       
+    0,                         /* tp_as_buffer */      
+    Py_TPFLAGS_DEFAULT |                               
+        Py_TPFLAGS_BASETYPE,   /* tp_flags */          
+    "",                        /* tp_doc */            
+    0,                         /* tp_traverse */       
+    0,                         /* tp_clear */          
+    0,                         /* tp_richcompare */    
+    0,                         /* tp_weaklistoffset */ 
+    0,                         /* tp_iter */           
+    0,                         /* tp_iternext */       
+	{{structName}}_methods,               /* tp_methods */
+    0,                         /* tp_members */        
+    0,                         /* tp_getset */         
+    0,                         /* tp_base */           
+    0,                         /* tp_dict */           
+    0,                         /* tp_descr_get */      
+    0,                         /* tp_descr_set */      
+    0,                         /* tp_dictoffset */     
+	(initproc){{structName}}_init,        /* tp_init */
+    0,                         /* tp_alloc */          
+	{{structName}}_new,                   /* tp_new */
+};
+	)EOF";
+
+	SimpleTemplateNamespace names;
+	names
+		.set("structName", _structName)
+		.set("moduleName", _moduleName)
+		.set("name", name())
+		.set("reprName", reprName)
+		.set("strName", strName)
+		.set("cppName", _cppQualTypeName);
+
+	StringTemplate(typeObjectFormatString).expand(out, names);
 
 }
 

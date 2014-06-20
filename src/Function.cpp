@@ -78,7 +78,48 @@ void Function::codegenDeclaration(std::ostream &out) const
 {
 	out << boost::format(FunctionPrototype) % _implName % selfTypeName() << ";\n";
 }
+void Function::codegenDefinitionBody(std::ostream &out) const
+{
+	// emit "try" block
+	out << "try\n{\n";
+	{
+		IndentingOStreambuf indenter2(out);
+		// call function
+		{
+			if(_lineNo >= 0)
+				out << boost::format("#line %1% %2%\n") % _lineNo % std::quoted(_origFile);
 
+			if(_returnType != "void")
+			{
+				out << _returnType << " result = ";
+			}
+
+			codegenCall(out);
+		}
+
+
+		if(_returnType != "void")
+		{
+			out << "return PyConversion<" << _returnType << ">::dump(result);\n";
+		}
+		else
+		{
+			out << "return Py_None;\n";
+		}
+	}
+	out << "}\n";
+	out << "catch(python::Exception &)\n{\n";
+	out << "    return 0;\n";
+	out << "}\n";
+	out << "catch(std::exception &exc)\n{\n";
+	// emit catch block
+	{
+		IndentingOStreambuf indenter2(out);
+		out << "return PyErr_Format(PyExc_RuntimeError, \"%s\", exc.what());\n";
+	}
+
+	out << "}\n";
+}
 void Function::codegenDefinition(std::ostream &out) const
 {
 	using namespace streams;
@@ -120,46 +161,8 @@ void Function::codegenDefinition(std::ostream &out) const
 			                     "    return 0;\n") % cat(formatStream) % cat(argStream);
 		}
 
-		// emit "try" block
-		out << "try\n{\n";
-		{
-			IndentingOStreambuf indenter2(out);
-			// call function
-			{
-				if(_lineNo >= 0)
-					out << boost::format("#line %1% %2%\n") % _lineNo % std::quoted(_origFile);
-
-				if(_returnType != "void")
-				{
-					out << _returnType << " result = ";
-				}
-			
-				codegenCall(out);
-			}
-
-
-			if(_returnType != "void")
-			{
-				out << "return PyConversion<" << _returnType << ">::dump(result);\n";
-			}
-			else
-			{
-				out << "return Py_None;\n";
-			}
-		}
-		out << "}\n";
-		out << "catch(python::Exception &)\n{\n";
-		out << "    return 0;\n";
-		out << "}\n";
-		out << "catch(std::exception &exc)\n{\n";
-		// emit catch block
-		{
-			IndentingOStreambuf indenter2(out);
-			out << "return PyErr_Format(PyExc_RuntimeError, \"%s\", exc.what());\n";
-		}
-
-		out << "}\n";
-
+		
+		codegenDefinitionBody(out);
 	}
 
 	out << "}\n";
