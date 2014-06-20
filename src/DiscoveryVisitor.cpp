@@ -94,9 +94,31 @@ public:
 			auto unqualName = rsplit(name, "::").second;
 
 // 			assert(!_modstack.empty());
-			_modstack.back()->addExport(std::make_unique<Type>(unqualName,
-			                                                   name,
-			                                                   ""));
+			auto ty = std::make_unique<Type>(unqualName, name, "");
+			using namespace streams;
+			for(auto field : stream(decl->decls_begin(), decl->decls_end()))
+			{
+				if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field)
+			   		|| llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field)) 
+				{
+					continue;
+				}
+
+				if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
+				{
+					if(!method->isOverloadedOperator())
+					{
+						auto mdata = _wrapperEmitter.method(method);
+						ty->addMethod(std::move(mdata));
+					}
+				}
+			}
+
+			_modstack.back()->addExport(std::move(ty));
+
+
+
+
 
 		}
 
@@ -178,6 +200,24 @@ public:
 		return result;
 	}
 
+// 
+// 	bool VisitMethodDecl(clang::CXXMethodDecl *decl)
+// 	{
+// 		if(isPyExport(decl->getParent()))
+// 		{
+// 			if(!checkInModule(decl)) return false;
+// 
+// 			// check not a structor
+// 			if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(decl)
+// 			   || llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(decl))
+// 			{
+// 				return true;
+// 			}
+// 
+// 
+// 		}
+// 	}
+// 
 	bool VisitFunctionDecl(clang::FunctionDecl *decl)
 	{
 		

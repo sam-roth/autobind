@@ -31,6 +31,7 @@ add_executable(
 	src/Function.cpp
 	src/DiscoveryVisitor.cpp
 	src/Type.cpp
+	src/Method.cpp
 )
 
 target_link_libraries(

@@ -1,5 +1,6 @@
 
 #include "Type.hpp"
+#include "Method.hpp"
 #include "util.hpp"
 
 namespace autobind {
@@ -14,6 +15,11 @@ Type::Type(std::string name,
 	_structName = gensym(this->name());
 }
 
+void Type::addMethod(std::unique_ptr<Method> method)
+{
+	method->setSelfTypeName(_structName);
+	_methods.push_back(std::move(method));
+}
 
 Function &Type::constructor() const
 {
@@ -48,21 +54,8 @@ void Type::codegenDeclaration(std::ostream &out) const
 	out << "static int " << _structName << "_init(" << _structName << " *self, PyObject *args, PyObject *kw);\n";
 	out << "static void " << _structName << "_dealloc(" << _structName << " *self);\n";
 
-	// bad idea is bad
-// 
-// 	out << "template <>\nstruct PyConversion<" << _cppQualTypeName << " *>\n{\n";
-// 	{
-// 		IndentingOStreambuf indenter(out);
-// 
-// 
-// 		out << "static PyObject *dump(" << _cppQualTypeName << "* x)\n{\n";
-// 		out << "    return reinterpret_cast<PyObject *>(reinterpret_cast<char *>(x) - offsetof(" << _structName << ", object));\n";
-// 		out << "}\n";
-// 
-//
-// 	}
-// 	out << "};\n";
-// 
+	for(const auto &method : _methods) method->codegenDeclaration(out);
+
 }
 
 void Type::codegenDefinition(std::ostream &out) const 
@@ -121,6 +114,23 @@ void Type::codegenDefinition(std::ostream &out) const
 	}
 	out << "}\n";
 
+	for(const auto &method : _methods) method->codegenDefinition(out);
+
+	out << "static PyMethodDef " << _structName << "_methods[] = {\n";
+
+	{
+		IndentingOStreambuf indenter(out);
+		for(const auto &method : _methods)
+		{
+			method->codegenMethodTable(out);
+		}
+
+		out << "{0, 0, 0, 0}\n";
+	}
+
+	out << "};\n";
+
+
 	out << boost::format(
 		"static PyTypeObject %1%_Type = {                      \n"
 		"    PyVarObject_HEAD_INIT(NULL, 0)                     \n"
@@ -151,7 +161,7 @@ void Type::codegenDefinition(std::ostream &out) const
 		"    0,                         /* tp_weaklistoffset */ \n"
 		"    0,                         /* tp_iter */           \n"
 		"    0,                         /* tp_iternext */       \n"
-		"    0,             /* tp_methods */        \n"  // TODO:
+		"    %1%_methods,             /* tp_methods */        \n"
 		"    0,             /* tp_members */        \n"  // TODO:
 		"    0,                         /* tp_getset */         \n"
 		"    0,                         /* tp_base */           \n"

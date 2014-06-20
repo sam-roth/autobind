@@ -13,6 +13,11 @@ struct pyexport TestStruct
 		std::cout << "constructed " << this << "\n";
 	}
 
+	void test()
+	{
+		std::cout << "called test() " << this << "\n";
+	}
+
 	~TestStruct()
 	{
 		std::cout << "destructed " << this << "\n";
@@ -53,3 +58,26 @@ pyexport std::vector<int> doubled(const std::vector<int> &ints)
 
 	return v;
 }
+
+
+#define ACCESSORS(f) \
+	decltype(_##f) get_ ## f() const { return _##f; }\
+	void set_ ## f(decltype(_##f) value) { _##f = value; }
+
+class pyexport Noddy
+{
+	std::string _first, _last;
+	int _number;
+
+public:
+	ACCESSORS(number)
+	ACCESSORS(first)
+	ACCESSORS(last)
+
+	std::string name() const
+	{
+		return _first + _last;
+	}
+
+
+};

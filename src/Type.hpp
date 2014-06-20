@@ -2,12 +2,13 @@
 #include "Export.hpp"
 
 namespace autobind {
+class Method;
 
 class Type: public Export
 {
 	std::string _moduleName, _cppQualTypeName, _docstring, _structName;
 	mutable std::unique_ptr<Function> _constructor;
-
+	std::vector<std::unique_ptr<Method>> _methods;
 public:
 	Type(std::string name,
 	     std::string cppQualTypeName,
@@ -15,8 +16,9 @@ public:
 
 
 	Function &constructor() const;
+	
 	void setConstructor(std::unique_ptr<Function> func);
-
+	void addMethod(std::unique_ptr<Method> method);
 
 	virtual void codegenDeclaration(std::ostream &) const override;
 	virtual void codegenDefinition(std::ostream &) const override;

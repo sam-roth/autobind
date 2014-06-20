@@ -15,7 +15,7 @@ namespace autobind {
 namespace
 {
 	const boost::format FunctionPrototype{
-		"static PyObject *%s(PyObject *self, PyObject *args)"
+		"static PyObject *%s(%s *self, PyObject *args)"
 	};
 
 
@@ -47,14 +47,14 @@ Function::Function(std::string name, std::vector<Arg> args,
 	_implName += "_py_bind_impl";
 
 }
+
 void Function::codegenCall(std::ostream &out) const
 {
-
-
 	out << name();
 	codegenCallArgs(out);
 	out << ";\n";
 }
+
 void Function::codegenCallArgs(std::ostream &out) const
 {
 
@@ -76,13 +76,13 @@ void Function::codegenCallArgs(std::ostream &out) const
 
 void Function::codegenDeclaration(std::ostream &out) const
 {
-	out << boost::format(FunctionPrototype) % _implName << ";\n";
+	out << boost::format(FunctionPrototype) % _implName % selfTypeName() << ";\n";
 }
 
 void Function::codegenDefinition(std::ostream &out) const
 {
 	using namespace streams;
-	out << boost::format(FunctionPrototype) % _implName << "\n{\n";
+	out << boost::format(FunctionPrototype) % _implName % selfTypeName() << "\n{\n";
 
 	{
 		IndentingOStreambuf indenter(out);
@@ -169,7 +169,7 @@ void Function::codegenMethodTable(std::ostream &out) const
 {
 	auto docstring = processDocString(_docstring);
 
-	out << boost::format("{\"%1%\", %2%, METH_VARARGS, %3%},\n") 
+	out << boost::format("{\"%1%\", (PyCFunction) %2%, METH_VARARGS, %3%},\n") 
 		% unqualifiedName()
 		% implName()
 		% ("\"" + docstring + "\"");

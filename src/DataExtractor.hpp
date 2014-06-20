@@ -14,13 +14,14 @@
 #include "stream.hpp"
 #include "printing.hpp"
 #include "Export.hpp"
+#include "Method.hpp"
 
 namespace autobind {
 
 
 inline clang::QualType removeRefsAndCVR(const clang::QualType &ty)
 {
-	return ty.getNonReferenceType().getUnqualifiedType();
+	return ty.getCanonicalType().getNonReferenceType().getUnqualifiedType();
 }
 
 
@@ -39,9 +40,11 @@ struct DataExtractor
 	}
 
 
-	std::unique_ptr<autobind::Function> function(clang::FunctionDecl *decl)
+
+	template <class T>
+	std::unique_ptr<T> genericFunction(clang::FunctionDecl *decl)
 	{
-		std::vector<autobind::Function::Arg> args;
+		std::vector<Function::Arg> args;
 
 		for(auto param : streams::stream(decl->param_begin(),
 		                                 decl->param_end()))
@@ -71,9 +74,9 @@ struct DataExtractor
 				docstring = comment->getRawText(decl->getASTContext().getSourceManager());
 			}
 		}
-		auto result = std::unique_ptr<autobind::Function>(new autobind::Function(decl->getQualifiedNameAsString(),
-		                                                                         std::move(args),
-		                                                                         std::move(docstring)));
+		auto result = std::unique_ptr<T>(new T(decl->getQualifiedNameAsString(),
+		                                       std::move(args),
+		                                       std::move(docstring)));
 		auto sr = decl->getSourceRange();
 
 		auto &sm = decl->getASTContext().getSourceManager();
@@ -81,13 +84,21 @@ struct DataExtractor
 		auto fileName = sm.getFilename(sr.getEnd());
 
 		result->setSourceLocation(firstLineNum, fileName);
-
-		result->setReturnType(decl->getResultType().getUnqualifiedType().getNonReferenceType().getUnqualifiedType().getAsString());
+		result->setReturnType(removeRefsAndCVR(decl->getResultType()).getAsString());
 
 		return result;
 
 	}
 
+	std::unique_ptr<Function> function(clang::FunctionDecl *decl)
+	{
+		return genericFunction<Function>(decl);
+	}
+
+	std::unique_ptr<Method> method(clang::CXXMethodDecl *decl)
+	{
+		return genericFunction<Method>(decl);
+	}
 };
 
 } // namespace autobind
