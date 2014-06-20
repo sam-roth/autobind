@@ -106,7 +106,7 @@ public:
 
 				if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
 				{
-					if(!method->isOverloadedOperator())
+					if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public)
 					{
 						auto mdata = _wrapperEmitter.method(method);
 						ty->addMethod(std::move(mdata));

@@ -10,11 +10,19 @@ print(l)
 example.doubleEach(l)
 print(l)
 
+
 ts = example.TestStruct()
 print(repr(ts))
 
+
+example.kwarg_parrot(voltage=480000,
+                     state='a stiff',
+                     action='voom',
+                     type='Norwegian Blue')
+
+
 # example.printEach(l)
-# example.foo('hey')
+example.foo('hey')
 
 # print(l)
 # 

@@ -15,7 +15,7 @@ namespace autobind {
 namespace
 {
 	const boost::format FunctionPrototype{
-		"static PyObject *%s(%s *self, PyObject *args)"
+		"static PyObject *%s(%s *self, PyObject *args, PyObject *kw)"
 	};
 
 
@@ -147,6 +147,12 @@ void Function::codegenDefinition(std::ostream &out) const
 		// call PyArg_ParseTuple
 
 		{
+
+			auto kwlistStream = stream(_args)
+				| transformed([](const Arg &a) { return "\"" + a.argName + "\", "; });
+
+			out << boost::format("static const char *kwlist[] = {%1%0};\n") % cat(kwlistStream);
+
 			auto argStream = count()
 				| take(_args.size())
 				| transformed([](int i) { return boost::format(", &arg%d") % i; });
@@ -157,7 +163,7 @@ void Function::codegenDefinition(std::ostream &out) const
 				| transformed([](const Arg &a) { return a.parseTupleFmt; });
 
 
-			out << boost::format("if(!PyArg_ParseTuple(args, \"%s\"%s))\n"
+			out << boost::format("if(!PyArg_ParseTupleAndKeywords(args, kw, \"%s\", (char **)kwlist%s))\n"
 			                     "    return 0;\n") % cat(formatStream) % cat(argStream);
 		}
 
@@ -172,7 +178,7 @@ void Function::codegenMethodTable(std::ostream &out) const
 {
 	auto docstring = processDocString(_docstring);
 
-	out << boost::format("{\"%1%\", (PyCFunction) %2%, METH_VARARGS, %3%},\n") 
+	out << boost::format("{\"%1%\", (PyCFunction) %2%, METH_VARARGS|METH_KEYWORDS, %3%},\n") 
 		% unqualifiedName()
 		% implName()
 		% ("\"" + docstring + "\"");

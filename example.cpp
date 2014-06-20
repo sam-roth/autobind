@@ -8,8 +8,14 @@ pymodule     (example);
 pydocstring  ("example functions to be consumed by python");
 
 
-
-
+pyexport void kwarg_parrot(int voltage,
+                           const char *state,
+                           const char *action,
+                           const char *type)
+{
+	std::cout << "-- This parrot wouldn't " << action << " if you put " << voltage << " Volts through it.\n";
+	std::cout << "-- Lovely plumage, the " << type << " -- It's " << state << "\n";
+}
 
 struct pyexport TestStruct
 {
@@ -27,6 +33,8 @@ struct pyexport TestStruct
 	{
 		std::cout << "destructed " << this << "\n";
 	}
+private:
+	void test2() { }
 };
 
 struct pyexport StringMap
