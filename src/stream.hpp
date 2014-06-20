@@ -139,7 +139,7 @@ ConstIteratorStream<It> stream(const It &first, const It &last)
 }
 
 template <class SourceStream, class Transform, class Enable=void>
-class TransformStream {};
+class TransformStream;
 
 #define RESULT_TYPE decltype(std::declval<Transform>()(std::declval<typename SourceStream::value_type>()))
 template <class SourceStream, class Transform>
@@ -255,7 +255,7 @@ struct TransformPartial
 template <class SourceStream, class Transform>
 TransformStream<SourceStream, Transform> operator |(SourceStream r, TransformPartial<Transform> t)
 {
-	return {std::move(r), std::move(t.t)};
+	return TransformStream<SourceStream, Transform>(std::move(r), std::move(t.t));
 }
 
 template <class Transform>
@@ -527,9 +527,15 @@ template <class D>
 struct DynamicCast
 {
 	template <class S>
-	D *operator()(S *p) const
+	const D *operator()(const std::unique_ptr<S> &p) const
 	{
-		return dynamic_cast<D *>(p);
+		return dynamic_cast<const D *>(p.get());
+	}
+
+	template <class S>
+	const D *operator()(const S *p) const
+	{
+		return dynamic_cast<const D *>(p);
 	}
 
 	template <class S>
@@ -618,12 +624,27 @@ namespace detail
 
 		#undef EXPR
 	};
+
+	struct Nonzero
+	{
+		template <class T>
+		bool operator()(T x) const
+		{
+			return x != 0;
+		}
+	};
+
+	template <class T>
+	struct DynamicCastPartial
+	{
+	};
 }
 
 namespace
 {
 	detail::AddrOf addrOf __attribute__((__unused__));
 	detail::Deref deref __attribute__((__unused__));
+	detail::Nonzero nonzero __attribute__((__unused__));
 
 }
 
@@ -659,7 +680,18 @@ bool all(T strm)
 	return true;
 }
 
+template <class T>
+detail::DynamicCastPartial<T> dynamicCasted()
+{
+	return {};
+}
 
+template <class Stream, class T>
+FilterStream<TransformStream<Stream, DynamicCast<T>>, detail::Nonzero> 
+operator |(Stream r, detail::DynamicCastPartial<T> p)
+{
+	return r | transformed(DynamicCast<T>()) | filtered(nonzero);
+}
 
 
 

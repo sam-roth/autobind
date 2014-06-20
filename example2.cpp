@@ -13,11 +13,13 @@ public:
 	, _y(y)
 	{ }
 
+	pygetter(x)
 	int x() const
 	{
 		return _x;
 	}
 
+	pygetter(y)
 	int y() const
 	{
 		return _y;
@@ -34,5 +36,7 @@ public:
 	{
 		return Point2D(_x + x, _y + y);
 	}
+
+	
 };
 

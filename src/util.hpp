@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 
+
 namespace autobind {
 template <class T>
 struct IterRange
@@ -79,5 +80,6 @@ inline void replace(std::string &str, const char *pat, const char *repl)
 	}
 }
 
+std::string dedent(const std::string &s);
 
 } // autobind

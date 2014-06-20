@@ -16,6 +16,7 @@
 #include "printing.hpp"
 #include "Export.hpp"
 #include "Method.hpp"
+#include "Getter.hpp"
 
 namespace autobind {
 
@@ -43,7 +44,7 @@ struct DataExtractor
 
 
 	template <class T>
-	std::unique_ptr<T> genericFunction(clang::FunctionDecl *decl)
+	std::unique_ptr<T> genericFunction(clang::FunctionDecl *decl, const std::string &forceName="")
 	{
 		std::vector<Function::Arg> args;
 
@@ -75,9 +76,15 @@ struct DataExtractor
 				docstring = comment->getRawText(decl->getASTContext().getSourceManager());
 			}
 		}
+
+
+
 		auto result = std::unique_ptr<T>(new T(decl->getQualifiedNameAsString(),
 		                                       std::move(args),
 		                                       std::move(docstring)));
+
+		result->setPythonName(forceName);
+		
 		auto sr = decl->getSourceRange();
 
 		auto &sm = decl->getASTContext().getSourceManager();
@@ -98,19 +105,23 @@ struct DataExtractor
 
 	std::unique_ptr<Method> method(clang::CXXMethodDecl *decl)
 	{
-		auto result = genericFunction<Method>(decl);
+		std::unique_ptr<Method> result;
 
 		for(auto attr : streams::stream(decl->specific_attr_begin<clang::AnnotateAttr>(),
 		                                decl->specific_attr_end<clang::AnnotateAttr>()))
 		{
-			if(attr->getAnnotation().startswith("pyoperator:"))
+			if(attr->getAnnotation().startswith("pygetter:"))
 			{
-				result->setOperatorName(attr->getAnnotation().rsplit(':').second);
+				result = genericFunction<Getter>(decl, attr->getAnnotation().rsplit(':').second);
 			}
 		}
 
+		if(!result) result = genericFunction<Method>(decl);
+
 		return result;
 	}
+
+
 };
 
 } // namespace autobind

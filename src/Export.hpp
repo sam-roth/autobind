@@ -81,9 +81,20 @@ public:
 	{
 		_returnType = s;
 	}
+
+	void setPythonName(const std::string &s)
+	{
+		_pythonName = s;
+	}
+
+	const std::string &pythonName() const
+	{
+		return _pythonName.empty()? unqualifiedName() : _pythonName;
+	}
+
 private:
 	std::vector<Arg> _args;
-	std::string _implName, _unqualifiedName, _docstring, _origFile, _returnType;
+	std::string _implName, _unqualifiedName, _docstring, _origFile, _returnType, _pythonName;
 	int _lineNo = -1;
 };
 

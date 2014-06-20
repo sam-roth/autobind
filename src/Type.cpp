@@ -40,20 +40,27 @@ void Type::setConstructor(std::unique_ptr<Function> func)
 
 void Type::codegenDeclaration(std::ostream &out) const
 {
-	out << "struct " << _structName << "\n{\n";
+
+
+	StringTemplate declTemplate = R"EOF(
+	struct {{structName}}
 	{
-		IndentingOStreambuf indenter(out);
+		PyObject_HEAD
+		{{typeName}} object;
+	};
 
-		out << "PyObject_HEAD\n";
-		out << _cppQualTypeName << " object;\n";
+	static PyObject *{{structName}}_new(PyTypeObject *ty, PyObject *args, PyObject *kw);
+	static int       {{structName}}_init({{structName}} *self, PyObject *args, PyObject *kw);
+	static void      {{structName}}_dealloc({{structName}} *self);
+	)EOF";
 
-	}
-	out << "};\n";
 
+	SimpleTemplateNamespace ns;
+	ns
+		.set("structName", _structName)
+		.set("typeName", _cppQualTypeName);
 
-	out << "static PyObject *" << _structName << "_new(PyTypeObject *ty, PyObject *args, PyObject *kw);\n";
-	out << "static int " << _structName << "_init(" << _structName << " *self, PyObject *args, PyObject *kw);\n";
-	out << "static void " << _structName << "_dealloc(" << _structName << " *self);\n";
+	declTemplate.expand(out, ns);
 
 	for(const auto &method : _methods) method->codegenDeclaration(out);
 
@@ -62,55 +69,59 @@ void Type::codegenDeclaration(std::ostream &out) const
 void Type::codegenDefinition(std::ostream &out) const 
 {
 
-	out << "static PyObject *" << _structName << "_new(PyTypeObject *ty, PyObject *args, PyObject *kw)\n{\n";
+
+	StringTemplate newFunc = R"EOF(
+	static PyObject *{{structName}}_new(PyTypeObject *ty, PyObject *args, PyObject *kw)
 	{
-		IndentingOStreambuf indenter(out);
-		out << _structName << " *self = (" << _structName << " *)ty->tp_alloc(ty, 0);\n";
-		out << "if(!self) return 0;\n";
-		
-		// emit "try" block
-		out << "try\n{\n";
+		{{structName}} *self = ({{structName}} *)ty->tp_alloc(ty, 0);
+		if(!self) return 0;
+
+		try
 		{
-			IndentingOStreambuf indenter2(out);
-
-			const auto &con = constructor();
-
-			// unpack argument tuple
-			con.codegenTupleUnpack(out);
-
-			// call function
-			out << "new((void *)&self->object) " << _cppQualTypeName;
-			con.codegenCallArgs(out);
-			out << ";\n";
-			out << "return (PyObject *) self;\n";
+			{{unpackTuple}}
+			new((void *) &self->object) {{typeName}}{{callArgs}};
+			return (PyObject *)self;
 		}
-		out << "}\n";
-		out << "catch(python::Exception &)\n{\n";
-		out << "    return 0;\n";
-		out << "}\n";
-		out << "catch(std::exception &exc)\n{\n";
-		// emit catch block
+		catch(python::Exception &)
 		{
-			IndentingOStreambuf indenter2(out);
-			out << "return PyErr_Format(PyExc_RuntimeError, \"%s\", exc.what());\n";
+			Py_XDECREF(self);
+			return 0;
 		}
-
-		out << "}\n";
-	
+		catch(std::exception &exc)
+		{
+			Py_XDECREF(self);
+			return PyErr_Format(PyExc_RuntimeError, "%s", exc.what());
+		}
 	}
-	out << "}\n";
+	)EOF";
+
+	{
+		SimpleTemplateNamespace ns;
+		ns
+			.set("structName", _structName)
+			.setFunc("unpackTuple", [&](std::ostream &out) {
+				constructor().codegenTupleUnpack(out);
+			})
+			.set("typeName", _cppQualTypeName)
+			.setFunc("callArgs", [&](std::ostream &out) {
+				constructor().codegenCallArgs(out);
+			});
+
+		newFunc.expand(out, ns);
+	}
+
 
 	if(_copyAvailable)
 	{
 		const char *tpl = R"EOF(
-template <>
-struct PyConversion<{{typeName}}>
-{
-	static PyObject *dump(const {{typeName}} &obj);
-	static const {{typeName}} &load(PyObject *obj);
+		template <>
+		struct PyConversion<{{typeName}}>
+		{
+			static PyObject *dump(const {{typeName}} &obj);
+			static const {{typeName}} &load(PyObject *obj);
 
-};
-)EOF";
+		};
+		)EOF";
 
 		SimpleTemplateNamespace ns;
 		ns
@@ -120,41 +131,67 @@ struct PyConversion<{{typeName}}>
 	}
 
 
+	StringTemplate initDeallocTemplate = R"EOF(
 
-	out << "static int " << _structName << "_init(" << _structName << " *self, PyObject *args, PyObject *kw)\n{\n";
+	static int {{structName}}_init({{structName}} *self, PyObject *args, PyObject *kw)
 	{
-		IndentingOStreambuf indenter(out);
-		out << "return 0;\n";
+		return 0;
 	}
-	out << "}\n";
 
-	out << "static void " << _structName << "_dealloc(" << _structName << " *self)\n{\n";
+	static void {{structName}}_dealloc({{structName}} *self)
 	{
-		IndentingOStreambuf indenter(out);
-
-		auto destructor = "~" + rsplit(_cppQualTypeName, "::").second;
-
-		out << "self->object." << destructor << "();\n";
-		out << "Py_TYPE(self)->tp_free((PyObject *)self);\n";
+		self->object.{{destructor}}();
+		Py_TYPE(self)->tp_free((PyObject *)self);
 	}
-	out << "}\n";
+
+	)EOF";
+
+	{
+		SimpleTemplateNamespace ns;
+		ns
+			.set("structName", _structName)
+			.set("destructor", "~" + rsplit(_cppQualTypeName, "::").second);
+		initDeallocTemplate.expand(out, ns);
+	}
+
 
 	for(const auto &method : _methods) method->codegenDefinition(out);
 
-	out << "static PyMethodDef " << _structName << "_methods[] = {\n";
+
+	StringTemplate methodsTemplate = R"EOF(
+
+	static PyMethodDef {{structName}}_methods[] = {
+		{{methodTable}}
+		{0, 0, 0, 0}
+	};
+
+	static PyGetSetDef {{structName}}_getset[] = {
+		{{getSetTable}}
+		{0}
+	};
+
+	)EOF";
 
 	{
-		IndentingOStreambuf indenter(out);
-		for(const auto &method : _methods)
-		{
-			method->codegenMethodTable(out);
-		}
+		SimpleTemplateNamespace ns;
+		ns
+			.set("structName", _structName)
+			.setFunc("methodTable", [&](std::ostream &out) {
+				for(const auto &method : _methods)
+				{
+					method->codegenMethodTable(out);
+				}
+			})
+			.setFunc("getSetTable", [&](std::ostream &out) {
+				for(auto getter : getters())
+				{
+					out << boost::format("{(char *)\"%1%\", (getter)%2%, 0, (char *)\"%3%\", 0},\n")
+						% getter->pythonName() % getter->implName() % processDocString(getter->docstring());
+				}
+			});
 
-		out << "{0, 0, 0, 0}\n";
+		methodsTemplate.expand(out, ns);
 	}
-
-	out << "};\n";
-
 
 	std::string reprName = "0";
 	std::string strName = "0";
@@ -187,47 +224,47 @@ struct PyConversion<{{typeName}}>
 	}
 
 	const char *typeObjectFormatString = R"EOF(
-static PyTypeObject {{structName}}_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)                     
-	"{{moduleName}}.{{name}}",                 /* tp_name */
-	sizeof({{structName}}),               /* tp_basicsize */
-    0,                         /* tp_itemsize */       
-	(destructor){{structName}}_dealloc,   /* tp_dealloc */
-    0,                         /* tp_print */          
-    0,                         /* tp_getattr */        
-    0,                         /* tp_setattr */        
-    0,                         /* tp_reserved */       
-	python::protocols::detail::ReprConverter<{{cppName}}, {{structName}}>::get(),             /* tp_repr */
-    0,                         /* tp_as_number */      
-    0,                         /* tp_as_sequence */    
-    0,                         /* tp_as_mapping */     
-    0,                         /* tp_hash  */          
-    0,                         /* tp_call */           
-	python::protocols::detail::StrConverter<{{cppName}}, {{structName}}>::get(),             /* tp_str */
-    PyObject_GenericGetAttr,                         /* tp_getattro */       
-    PyObject_GenericSetAttr,                         /* tp_setattro */       
-    0,                         /* tp_as_buffer */      
-    Py_TPFLAGS_DEFAULT |                               
-        Py_TPFLAGS_BASETYPE,   /* tp_flags */          
-    "",                        /* tp_doc */            
-    0,                         /* tp_traverse */       
-    0,                         /* tp_clear */          
-    0,                         /* tp_richcompare */    
-    0,                         /* tp_weaklistoffset */ 
-    0,                         /* tp_iter */           
-    0,                         /* tp_iternext */       
-	{{structName}}_methods,               /* tp_methods */
-    0,                         /* tp_members */        
-    0,                         /* tp_getset */         
-    0,                         /* tp_base */           
-    0,                         /* tp_dict */           
-    0,                         /* tp_descr_get */      
-    0,                         /* tp_descr_set */      
-    0,                         /* tp_dictoffset */     
-	(initproc){{structName}}_init,        /* tp_init */
-    0,                         /* tp_alloc */          
-	{{structName}}_new,                   /* tp_new */
-};
+	static PyTypeObject {{structName}}_Type = {
+		PyVarObject_HEAD_INIT(NULL, 0)                     
+		"{{moduleName}}.{{name}}",                 /* tp_name */
+		sizeof({{structName}}),               /* tp_basicsize */
+		0,                         /* tp_itemsize */       
+		(destructor){{structName}}_dealloc,   /* tp_dealloc */
+		0,                         /* tp_print */          
+		0,                         /* tp_getattr */        
+		0,                         /* tp_setattr */        
+		0,                         /* tp_reserved */       
+		python::protocols::detail::ReprConverter<{{cppName}}, {{structName}}>::get(),             /* tp_repr */
+		0,                         /* tp_as_number */      
+		0,                         /* tp_as_sequence */    
+		0,                         /* tp_as_mapping */     
+		0,                         /* tp_hash  */          
+		0,                         /* tp_call */           
+		python::protocols::detail::StrConverter<{{cppName}}, {{structName}}>::get(),             /* tp_str */
+		PyObject_GenericGetAttr,                         /* tp_getattro */       
+		PyObject_GenericSetAttr,                         /* tp_setattro */       
+		0,                         /* tp_as_buffer */      
+		Py_TPFLAGS_DEFAULT |                               
+			Py_TPFLAGS_BASETYPE,   /* tp_flags */          
+		"",                        /* tp_doc */            
+		0,                         /* tp_traverse */       
+		0,                         /* tp_clear */          
+		0,                         /* tp_richcompare */    
+		0,                         /* tp_weaklistoffset */ 
+		0,                         /* tp_iter */           
+		0,                         /* tp_iternext */       
+		{{structName}}_methods,               /* tp_methods */
+		0,                         /* tp_members */        
+		{{structName}}_getset,                         /* tp_getset */
+		0,                         /* tp_base */           
+		0,                         /* tp_dict */           
+		0,                         /* tp_descr_get */      
+		0,                         /* tp_descr_set */      
+		0,                         /* tp_dictoffset */     
+		(initproc){{structName}}_init,        /* tp_init */
+		0,                         /* tp_alloc */          
+		{{structName}}_new,                   /* tp_new */
+	};
 	)EOF";
 
 	SimpleTemplateNamespace names;
@@ -246,44 +283,46 @@ static PyTypeObject {{structName}}_Type = {
 	if(_copyAvailable)
 	{
 		const char *templateString = R"EOF(
-PyObject * PyConversion<{{typeName}}>::dump(const {{typeName}} &obj)
-{
-	PyTypeObject *ty = &{{structName}}_Type;
+		PyObject * PyConversion<{{typeName}}>::dump(const {{typeName}} &obj)
+		{
+			PyTypeObject *ty = &{{structName}}_Type;
 
-	{{structName}} *self = ({{structName}} *)ty->tp_alloc(ty, 0);
+			{{structName}} *self = ({{structName}} *)ty->tp_alloc(ty, 0);
 
-	try
-	{
-		new ((void *) &self->object) {{typeName}}(obj);
-		return (PyObject *)self;
-	}
-	catch(python::Exception &)
-	{
-		return 0;
-	}
-	catch(std::exception &exc)
-	{
-		return PyErr_Format(PyExc_RuntimeError, "%s", exc.what());
-	}
-}
+			try
+			{
+				new ((void *) &self->object) {{typeName}}(obj);
+				return (PyObject *)self;
+			}
+			catch(python::Exception &)
+			{
+				Py_XDECREF(self);
+				return 0;
+			}
+			catch(std::exception &exc)
+			{
+				Py_XDECREF(self);
+				return PyErr_Format(PyExc_RuntimeError, "%s", exc.what());
+			}
+		}
 
-const {{typeName}} &PyConversion<{{typeName}}>::load(PyObject *obj)
-{
-	int rv = PyObject_IsInstance(obj, (PyObject *) &{{structName}}_Type);
-	if(rv < 0)
-	{
-		throw python::Exception();
-	}
+		const {{typeName}} &PyConversion<{{typeName}}>::load(PyObject *obj)
+		{
+			int rv = PyObject_IsInstance(obj, (PyObject *) &{{structName}}_Type);
+			if(rv < 0)
+			{
+				throw python::Exception();
+			}
 
-	if(rv == 1)
-	{
-		return (({{structName}} *) obj)->object;
-	}
-	else
-	{
-		throw std::runtime_error("Expected an instance of {{typeName}}.");
-	}
-}
+			if(rv == 1)
+			{
+				return (({{structName}} *) obj)->object;
+			}
+			else
+			{
+				throw std::runtime_error("Expected an instance of {{typeName}}.");
+			}
+		}
 		)EOF";
 
 		StringTemplate(templateString).expand(out, names);

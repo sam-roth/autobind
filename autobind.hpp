@@ -18,12 +18,16 @@
 #define PY_MODULE(name) namespace __attribute__((annotate("py:module:" #name))) {}
 #define PY_DOCSTRING(text) namespace __attribute__((annotate("pydocstring:" text))) { }
 #define PY_OPERATOR(name) __attribute__((annotate("pyoperator:" #name)))
+#define PY_GETTER(name) __attribute__((annotate("pygetter:"#name)))
+#define PY_SETTER(name) __attribute__((annotate("pysetter:"#name)))
 
 #ifndef PY_NO_KEYWORDS
 	#define pyexport PY_EXPORT
 	#define pymodule PY_MODULE
 	#define pydocstring PY_DOCSTRING
 	#define pyoperator PY_OPERATOR
+	#define pygetter PY_GETTER
+	#define pysetter PY_SETTER
 #endif
 
 

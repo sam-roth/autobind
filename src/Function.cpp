@@ -179,7 +179,7 @@ void Function::codegenMethodTable(std::ostream &out) const
 	auto docstring = processDocString(_docstring);
 
 	out << boost::format("{\"%1%\", (PyCFunction) %2%, METH_VARARGS|METH_KEYWORDS, %3%},\n") 
-		% unqualifiedName()
+		% pythonName()
 		% implName()
 		% ("\"" + docstring + "\"");
 }

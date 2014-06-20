@@ -26,6 +26,16 @@ public:
         , myOwner( NULL )
     {
     }
+
+	explicit IndentingOStreambuf(std::ostream &dest, const std::string &indent, bool atLineStart=true)
+	: myDest(dest.rdbuf())
+	, myIsAtStartOfLine(atLineStart)
+	, myIndent(indent)
+	, myOwner(&dest)
+	{
+		myOwner->rdbuf(this);
+	}
+	
     explicit            IndentingOStreambuf(
                             std::ostream& dest, int indent = 4 )
         : myDest( dest.rdbuf() )
