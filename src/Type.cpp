@@ -44,11 +44,8 @@ void Type::codegenDeclaration(std::ostream &out) const
 
 
 	StringTemplate declTemplate = R"EOF(
-	struct {{structName}}
-	{
-		PyObject_HEAD
-		{{typeName}} object;
-	};
+	class {{typeName}};
+	struct {{structName}};
 
 	static PyObject *{{structName}}_new(PyTypeObject *ty, PyObject *args, PyObject *kw);
 	static int       {{structName}}_init({{structName}} *self, PyObject *args, PyObject *kw);
@@ -65,6 +62,26 @@ void Type::codegenDeclaration(std::ostream &out) const
 
 	for(const auto &method : _methods) method->codegenDeclaration(out);
 
+	if(_copyAvailable)
+	{
+		const char *tpl = R"EOF(
+		template <>
+		struct PyConversion<{{typeName}}>
+		{
+			static PyObject *dump(const {{typeName}} &obj);
+			static {{typeName}} &load(PyObject *obj);
+
+		};
+		)EOF";
+
+		SimpleTemplateNamespace ns;
+		ns
+			.set("typeName", _cppQualTypeName);
+		StringTemplate(tpl).expand(out, ns);
+
+	}
+
+
 }
 
 void Type::codegenDefinition(std::ostream &out) const 
@@ -72,6 +89,13 @@ void Type::codegenDefinition(std::ostream &out) const
 
 
 	StringTemplate newFunc = R"EOF(
+
+	struct {{structName}}
+	{
+		PyObject_HEAD
+		{{typeName}} object;
+	};
+	
 	static PyObject *{{structName}}_new(PyTypeObject *ty, PyObject *args, PyObject *kw)
 	{
 		{{structName}} *self = ({{structName}} *)ty->tp_alloc(ty, 0);
@@ -109,26 +133,6 @@ void Type::codegenDefinition(std::ostream &out) const
 			});
 
 		newFunc.expand(out, ns);
-	}
-
-
-	if(_copyAvailable)
-	{
-		const char *tpl = R"EOF(
-		template <>
-		struct PyConversion<{{typeName}}>
-		{
-			static PyObject *dump(const {{typeName}} &obj);
-			static const {{typeName}} &load(PyObject *obj);
-
-		};
-		)EOF";
-
-		SimpleTemplateNamespace ns;
-		ns
-			.set("typeName", _cppQualTypeName);
-		StringTemplate(tpl).expand(out, ns);
-
 	}
 
 
@@ -244,7 +248,7 @@ void Type::codegenDefinition(std::ostream &out) const
 		python::protocols::detail::StrConverter<{{cppName}}, {{structName}}>::get(),             /* tp_str */
 		PyObject_GenericGetAttr,                         /* tp_getattro */       
 		PyObject_GenericSetAttr,                         /* tp_setattro */       
-		0,                         /* tp_as_buffer */      
+		python::protocols::detail::BufferProcs<{{cppName}}, {{structName}}>::get(),                         /* tp_as_buffer */      
 		Py_TPFLAGS_DEFAULT |                               
 			Py_TPFLAGS_BASETYPE,   /* tp_flags */          
 		"",                        /* tp_doc */            
@@ -307,7 +311,7 @@ void Type::codegenDefinition(std::ostream &out) const
 			}
 		}
 
-		const {{typeName}} &PyConversion<{{typeName}}>::load(PyObject *obj)
+		{{typeName}} &PyConversion<{{typeName}}>::load(PyObject *obj)
 		{
 			int rv = PyObject_IsInstance(obj, (PyObject *) &{{structName}}_Type);
 			if(rv < 0)
