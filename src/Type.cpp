@@ -231,44 +231,43 @@ void Type::codegenDefinition(std::ostream &out) const
 	const char *typeObjectFormatString = R"EOF(
 	static PyTypeObject {{structName}}_Type = {
 		PyVarObject_HEAD_INIT(NULL, 0)                     
-		"{{moduleName}}.{{name}}",                 /* tp_name */
-		sizeof({{structName}}),               /* tp_basicsize */
-		0,                         /* tp_itemsize */       
-		(destructor){{structName}}_dealloc,   /* tp_dealloc */
-		0,                         /* tp_print */          
-		0,                         /* tp_getattr */        
-		0,                         /* tp_setattr */        
-		0,                         /* tp_reserved */       
-		python::protocols::detail::ReprConverter<{{cppName}}, {{structName}}>::get(),             /* tp_repr */
-		0,                         /* tp_as_number */      
-		0,                         /* tp_as_sequence */    
-		0,                         /* tp_as_mapping */     
-		0,                         /* tp_hash  */          
-		0,                         /* tp_call */           
-		python::protocols::detail::StrConverter<{{cppName}}, {{structName}}>::get(),             /* tp_str */
-		PyObject_GenericGetAttr,                         /* tp_getattro */       
-		PyObject_GenericSetAttr,                         /* tp_setattro */       
-		python::protocols::detail::BufferProcs<{{cppName}}, {{structName}}>::get(),                         /* tp_as_buffer */      
-		Py_TPFLAGS_DEFAULT |                               
-			Py_TPFLAGS_BASETYPE,   /* tp_flags */          
-		"",                        /* tp_doc */            
-		0,                         /* tp_traverse */       
-		0,                         /* tp_clear */          
-		0,                         /* tp_richcompare */    
-		0,                         /* tp_weaklistoffset */ 
-		0,                         /* tp_iter */           
-		0,                         /* tp_iternext */       
-		{{structName}}_methods,               /* tp_methods */
-		0,                         /* tp_members */        
-		{{structName}}_getset,                         /* tp_getset */
-		0,                         /* tp_base */           
-		0,                         /* tp_dict */           
-		0,                         /* tp_descr_get */      
-		0,                         /* tp_descr_set */      
-		0,                         /* tp_dictoffset */     
-		(initproc){{structName}}_init,        /* tp_init */
-		0,                         /* tp_alloc */          
-		{{structName}}_new,                   /* tp_new */
+		"{{moduleName}}.{{name}}",                                                    /* tp_name */
+		sizeof({{structName}}),                                                       /* tp_basicsize */
+		0,                                                                            /* tp_itemsize */       
+		(destructor){{structName}}_dealloc,                                           /* tp_dealloc */
+		0,                                                                            /* tp_print */          
+		0,                                                                            /* tp_getattr */        
+		0,                                                                            /* tp_setattr */        
+		0,                                                                            /* tp_reserved */       
+		python::protocols::detail::ReprConverter<{{cppName}}, {{structName}}>::get(), /* tp_repr */
+		0,                                                                            /* tp_as_number */      
+		0,                                                                            /* tp_as_sequence */    
+		0,                                                                            /* tp_as_mapping */     
+		0,                                                                            /* tp_hash  */          
+		0,                                                                            /* tp_call */           
+		python::protocols::detail::StrConverter<{{cppName}}, {{structName}}>::get(),  /* tp_str */
+		PyObject_GenericGetAttr,                                                      /* tp_getattro */       
+		PyObject_GenericSetAttr,                                                      /* tp_setattro */       
+		python::protocols::detail::BufferProcs<{{cppName}}, {{structName}}>::get(),   /* tp_as_buffer */      
+		Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                                     /* tp_flags */          
+		"",                                                                           /* tp_doc */            
+		0,                                                                            /* tp_traverse */       
+		0,                                                                            /* tp_clear */          
+		0,                                                                            /* tp_richcompare */    
+		0,                                                                            /* tp_weaklistoffset */ 
+		0,                                                                            /* tp_iter */           
+		0,                                                                            /* tp_iternext */       
+		{{structName}}_methods,                                                       /* tp_methods */
+		0,                                                                            /* tp_members */        
+		{{structName}}_getset,                                                        /* tp_getset */
+		0,                                                                            /* tp_base */           
+		0,                                                                            /* tp_dict */           
+		0,                                                                            /* tp_descr_get */      
+		0,                                                                            /* tp_descr_set */      
+		0,                                                                            /* tp_dictoffset */     
+		(initproc){{structName}}_init,                                                /* tp_init */
+		0,                                                                            /* tp_alloc */          
+		{{structName}}_new,                                                           /* tp_new */
 	};
 	)EOF";
 
