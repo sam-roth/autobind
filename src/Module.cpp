@@ -20,12 +20,14 @@ void Module::codegenDeclaration(std::ostream &out) const
 	}
 
 	out << "#include <Python.h>\n";
-	out << boost::format("#include \"%s\"\n") % _sourceTUPath;
+	out << "#include \"autobind.hpp\"\n";
+
 
 	for(const auto &e : _exports)
 	{
 		e->codegenDeclaration(out);
 	}
+	out << boost::format("#include \"%s\"\n") % _sourceTUPath;
 }
 
 void Module::codegenDefinition(std::ostream &out) const
