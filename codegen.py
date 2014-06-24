@@ -41,7 +41,7 @@ def build(infile='example.cpp'):
 	prefix, suffix = os.path.splitext(infile)
 
 	with open(prefix + '.bind.cpp', 'wb') as f:
-		subprocess.check_call(['./bin/autobind', infile, '--', '-c'] + cflags + py_cflags, stdout=f)
+		subprocess.call(['./bin/autobind', infile, '--', '-c'] + cflags + py_cflags + ['-DAUTOBIND_RUN'], stdout=f)
 
 
 	subprocess.check_call(['clang++'] + cflags + py_cflags + py_ldflags + ['-shared', prefix + '.bind.cpp', '-o', 
