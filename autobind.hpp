@@ -44,11 +44,18 @@ class PY_SYMIDENT SymbolIdentitiesPrivate
 template <class T>
 struct PyConversion
 {
+#ifndef AUTOBIND_RUN
 	static_assert(sizeof(T) != sizeof(T),
 	              "No specialization of PyConversion<> was found for this type. "
 	              "This indicates a problem with your inputs to autobind.");
 	// static T load(PyObject *);
 	// static PyObject *dump(const T &);
+#else
+	// prevents compile errors while running autobind about missing specializations that
+	// will be automatically filled in later.
+	static T &load(PyObject *);
+	static PyObject *dump(const T &);
+#endif
 };
 
 namespace python
@@ -139,13 +146,69 @@ namespace python
 		};
 
 
+		template <class T, class Enable=void>
+		struct Buffer: public detail::UnimplTag
+		{
+			static int getBuffer(T &x, Py_buffer *view, int flags);
+			static void releaseBuffer(T &x, Py_buffer *view);
+
+		};
+
+
+		#define ENABLE_IF(x...) typename std::enable_if<x >::type
+		#define IS_UNIMPL(x...) std::is_base_of<UnimplTag, x >::value
 		namespace detail
 		{
+
+			template <class T, class U, class Enable=void>
+			struct BufferProcs 
+			{
+				static int getbuffer(U *exporter,
+				                     Py_buffer *view,
+				                     int flags)
+				{
+					view->obj = reinterpret_cast<PyObject*>(exporter);
+					int r =  Buffer<T>::getBuffer(exporter->object,
+					                              view,
+					                              flags);
+					Py_XINCREF(view->obj);
+					return r;
+				}
+
+				static void releasebuffer(U *exporter,
+				                          Py_buffer *view)
+				{
+					Buffer<T>::releaseBuffer(exporter->object,
+					                         view);
+				}
+
+				static PyBufferProcs *get()
+				{
+					static PyBufferProcs result = {
+						(getbufferproc) &getbuffer,
+						(releasebufferproc) &releasebuffer
+					};
+
+					return &result;
+				}
+			};
+
+			template <class T, class U>
+			struct BufferProcs<T, U, ENABLE_IF(IS_UNIMPL(Buffer<T>))>
+			{
+				static PyBufferProcs *get()
+				{
+					return 0;
+				}
+			};
+
+
+
 			template <class T, class U, class Enable=void>
 			struct StrConverter;
 
 			template <class T, class U>
-			struct StrConverter<T, U, typename std::enable_if<std::is_base_of<UnimplTag, Str<T>>::value>::type>
+			struct StrConverter<T, U, ENABLE_IF(IS_UNIMPL(Str<T>))>
 			{
 				static reprfunc get() { return 0; }
 			};
@@ -184,10 +247,10 @@ namespace python
 
 				static reprfunc get() { return (reprfunc) &converter; }
 			};
-
-
-
 		}
+
+		#undef ENABLE_IF
+		#undef IS_UNIMPL
 
 	}
 
@@ -198,12 +261,19 @@ namespace python
 			Py_XDECREF(o);
 		}
 
+		void keepPyObject(PyObject *o) { }
+
 		std::shared_ptr<PyObject> borrow(PyObject *o)
 		{
 			Py_XINCREF(o);
 			return std::shared_ptr<PyObject>(o, disposePyObject);
 		}
 
+		std::shared_ptr<PyObject> getNone()
+		{
+			Py_XINCREF(Py_None);
+			return std::shared_ptr<PyObject>(Py_None, disposePyObject);
+		}
 		
 	}
 	
@@ -304,8 +374,92 @@ namespace python
 		}
 	};
 
+	class ObjectRef
+	{
+		std::shared_ptr<PyObject> _obj;
+	public:
+		ObjectRef(std::shared_ptr<PyObject> p)
+		: _obj(p) { }
+
+		ObjectRef()
+		: _obj(getNone()) { } // for STL containers
+
+		static ObjectRef none()
+		{
+			return ObjectRef(getNone());
+		}
+
+
+		bool operator <(const ObjectRef &other) const
+		{
+			int rv = PyObject_RichCompareBool(_obj.get(), other._obj.get(), Py_LT);
+			if(rv < 0)
+			{
+				throw python::Exception();
+			}
+			else
+			{
+				return rv != 0;
+			}
+		}
+
+		bool operator ==(const ObjectRef &other)
+		{
+			int rv = PyObject_RichCompareBool(_obj.get(), other._obj.get(), Py_EQ);
+			if(rv < 0)
+			{
+				throw python::Exception();
+			}
+			else
+			{
+				return rv != 0;
+			}
+		}
+
+		const std::shared_ptr<PyObject> &pyObject() const
+		{
+			return _obj;
+		}
+	};
+
+	template <class T>
+	class Handle
+	{
+		ObjectRef _obj; // held to ensure refcount remains > 0
+		T &_ref;
+	public:
+
+		Handle(const ObjectRef &r)
+		: _obj(r)
+		, _ref(PyConversion<T>::load(r.pyObject().get()))
+		{ }
+
+		T &operator *() const
+		{
+			return _ref;
+		}
+
+		T *operator ->() const
+		{
+			return &_ref;
+		}
+
+		T &data() const
+		{
+			return _ref;
+		}
+	};
+
 };
 
+template <class T>
+struct PyConversion<python::Handle<T>>
+{
+	static python::Handle<T> load(PyObject *obj)
+	{
+		return python::Handle<T>(python::ObjectRef(python::borrow(obj)));
+	}
+};
 
 
 template <>
@@ -317,6 +471,23 @@ struct PyConversion<python::ListRef>
 	}
 };
 
+
+template <>
+struct PyConversion<python::ObjectRef>
+{
+	static python::ObjectRef load(PyObject *o)
+	{
+		return python::ObjectRef(python::borrow(o));
+	}
+
+
+	static PyObject *dump(const python::ObjectRef &oref)
+	{
+		auto result = oref.pyObject().get();
+		Py_XINCREF(result);
+		return result;
+	}
+};
 
 
 template <>
