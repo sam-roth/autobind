@@ -99,7 +99,7 @@ public:
 
 			bool foundConstructor = false;
 
-			if(decl->hasTrivialCopyConstructor())
+			if(decl->hasTrivialCopyConstructor() || decl->hasNonTrivialCopyConstructor())
 			{
 				ty->setCopyAvailable();
 			}
@@ -231,6 +231,7 @@ public:
 
 		return result;
 	}
+
 
 // 
 // 	bool VisitMethodDecl(clang::CXXMethodDecl *decl)
