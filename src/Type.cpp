@@ -3,6 +3,7 @@
 #include "Method.hpp"
 #include "util.hpp"
 #include "StringTemplate.hpp"
+#include "Module.hpp"
 
 namespace autobind {
 

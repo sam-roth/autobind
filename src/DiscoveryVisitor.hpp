@@ -4,6 +4,7 @@
 
 #include "prefix.hpp"
 #include "Export.hpp"
+#include "ModuleManager.hpp"
 
 namespace autobind {
 

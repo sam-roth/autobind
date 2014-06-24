@@ -34,6 +34,7 @@ add_library(
 	src/Method.cpp
 	src/Getter.cpp
 	src/util.cpp
+	src/Module.cpp
 )
 
 target_link_libraries(
