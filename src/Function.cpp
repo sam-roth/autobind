@@ -145,7 +145,7 @@ void Function::codegenDefinitionBody(std::ostream &out) const
 		}
 		else
 		{
-			out << "return Py_None;\n";
+			out << "Py_RETURN_NONE;\n";
 		}
 	}
 	out << "}\n";
