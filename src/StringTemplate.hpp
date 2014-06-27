@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <memory>
 #include <vector>
+#include <typeinfo>
 #include <boost/regex.hpp>
 #include "streamindent.hpp"
 #include "util.hpp"
@@ -20,10 +21,11 @@ struct IStreamable
 template <typename T>
 class StreamableWrapper: public IStreamable
 {
-	T _object;
+	const T &_object;
 public:
-	StreamableWrapper(const T &object)
-	: _object(object) { }
+	template <class U>
+	StreamableWrapper(U &&object)
+	: _object(std::forward<U>(object)) { }
 
 	void write(std::ostream &os) const final override
 	{
@@ -32,9 +34,19 @@ public:
 };
 
 template <typename T>
+struct ArrayDecay
+{
+	typedef typename std::conditional<
+		std::is_array<T>::value,
+		const typename std::remove_extent<T>::type *,
+		T
+	>::type type;
+};
+
+template <typename T>
 std::unique_ptr<IStreamable> makeStreamable(const T &object)
 {
-	return std::unique_ptr<IStreamable>(new StreamableWrapper<const T &>(object));
+	return std::unique_ptr<IStreamable>(new StreamableWrapper<typename ArrayDecay<T>::type>(object));
 }
 
 template <typename F>
@@ -55,10 +67,13 @@ std::unique_ptr<IStreamable> functionStreamable(F function)
 	return std::unique_ptr<IStreamable>(new FunctionStreamable(std::move(function)));
 }
 
+class StringTemplate;
+
 struct ITemplateNamespace
 {
 	virtual const IStreamable &get(const std::string &key) const = 0;
 	virtual ~ITemplateNamespace() { }
+
 };
 
 namespace {
@@ -99,7 +114,34 @@ public:
 	}
 };
 
+class SafeTemplateNamespace: public SimpleTemplateNamespace
+{
+	friend class StringTemplate;
+	const StringTemplate &t;
+	std::ostream &out;
+	SafeTemplateNamespace(const StringTemplate &t, std::ostream &out)
+	: t(t), out(out) { }
 
+	SafeTemplateNamespace(SafeTemplateNamespace &&other) = default;
+public:
+
+	template <typename T>
+	SafeTemplateNamespace &set(const std::string &key,
+	                             const T &value)
+	{
+		SimpleTemplateNamespace::set(key, value);
+		return *this;
+	}
+
+	template <typename F>
+	SafeTemplateNamespace &setFunc(const std::string &key,
+	                                 F func)
+	{
+		SimpleTemplateNamespace::setFunc(key, std::move(func));
+		return *this;
+	}
+	void expand() const;
+};
 
 class StringTemplate
 {
@@ -110,7 +152,12 @@ public:
 	StringTemplate(const std::string &format)
 	: _fmt(dedent(format))
 	{
-		
+
+	}
+
+	SafeTemplateNamespace into(std::ostream &os) const
+	{
+		return SafeTemplateNamespace(*this, os);
 	}
 
 	void expand(std::ostream &os, const ITemplateNamespace &ns) const
@@ -146,7 +193,7 @@ public:
 			{
 				ns.get(m[1]).write(ss);
 			}
-			
+
 			return ss.str();
 		};
 
@@ -160,5 +207,9 @@ public:
 	}
 };
 
+inline void SafeTemplateNamespace::expand() const
+{
+	t.expand(out, *this);
+}
 
 } // autobind

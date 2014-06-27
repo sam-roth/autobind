@@ -3,10 +3,12 @@
 
 #include <Python.h>
 
+#include <cxxabi.h>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <map>
+#include <typeinfo>
 
 #include "optional.hpp"
 
@@ -39,11 +41,13 @@ namespace python
 		              "This indicates a problem with your inputs to autobind.");
 		// static T load(PyObject *);
 		// static PyObject *dump(const T &);
+ 		// static const char *pythonTypeName();
 	#else
 		// prevents compile errors while running autobind about missing specializations that
 		// will be automatically filled in later.
 		static T &load(PyObject *);
 		static PyObject *dump(const T &);
+		static const char *pythonTypeName();
 	#endif
 	};
 
@@ -52,6 +56,8 @@ namespace python
 	{
 		typedef decltype(Conversion<T>::load(std::declval<PyObject *>())) type;
 	};
+
+
 
 	namespace protocols
 	{
@@ -106,8 +112,38 @@ namespace python
 
 			template <class T>
 			class HasStr: public HasMember<T, CheckHasStr> { };
-		}
 
+
+
+
+			struct CheckHasPythonTypeName
+			{
+				template <class T, const char *(*)() = &T::pythonTypeName>
+				struct get { };
+			};
+
+			template <class T>
+			class HasPythonTypeName: public HasMember<T, CheckHasPythonTypeName> { };
+
+			template <class T, class Enable=void>
+			class PythonTypeName
+			{
+				static const char *get()
+				{
+					return typeid(T).name();
+				}
+			};
+// 
+// 			template <class T>
+// 			class PythonTypeName<T,
+		}
+//
+// 		template <class T>
+// 		const char *pythonTypeName()
+// 		{
+// 
+// 		}
+// 
 		template <class T, class Enable=void>
 		struct Str: public detail::UnimplTag
 		{
@@ -598,17 +634,84 @@ namespace python
 
 	namespace detail
 	{
+
+		inline std::string demangle(const char *name)
+		{
+			int ok;
+
+			char *buff = abi::__cxa_demangle(name, nullptr, nullptr, &ok);
+			if(ok == 0)
+			{
+				std::string result = buff;
+				std::free(buff);
+				return result;
+			}
+			else
+			{
+				return name;
+			}
+		}
+
+		inline std::string elideTemplateArgs(const std::string &str)
+		{
+			std::string result;
+
+			int openBracketCount = 0;
+			for(char c : str)
+			{
+				if(c == '>')
+				{
+					--openBracketCount;
+				}
+
+				if(!openBracketCount)
+				{
+					result.push_back(c);
+				}
+
+				if(c == '<')
+				{
+					openBracketCount++;
+				}
+			}
+
+			return result;
+		}
+
+		inline std::string elidedDemangle(const char *name)
+		{
+			return elideTemplateArgs(demangle(name));
+		}
+
 		template <class T>
 		struct ConversionFunc
 		{
+			struct Value
+			{
+				const char *errorMessage;
+				autobind::Optional<typename ConversionLoadResult<T>::type> value;
+			};
+
 			static int convert(PyObject *pyObject, void *address)
 			{
-				auto &result = *static_cast<
-					autobind::Optional<
-						typename ConversionLoadResult<T>::type> * >(address);
+				auto &result = *static_cast<typename ConversionFunc<T>::Value *>(address);
 
-				return result? 1 : 0;
+				result.value = tryConverting<T>(pyObject);
+
+				if(!result.value)
+				{
+					PyErr_Format(PyExc_TypeError, "%s",
+					             result.errorMessage);
+
+					return 0;
+				}
+				else
+				{
+					return 1;
+				}
 			}
+
+
 		};
 	}
 

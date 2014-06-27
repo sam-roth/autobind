@@ -1,6 +1,6 @@
 #include <iostream>
 #include "util.hpp"
-
+#include "StringTemplate.hpp"
 
 int main()
 {
@@ -9,6 +9,19 @@ int main()
    	how are you?
 	)EOF";
 
-	std::cout << autobind::dedent(s) << std::endl;
+
+	autobind::StringTemplate stmp = R"EOF(
+
+	a{{b}}
+
+	)EOF";
+
+
+
+	stmp.into(std::cout)
+		.set("b", "")
+		.expand();
+
 }
+
 

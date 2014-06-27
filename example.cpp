@@ -7,7 +7,10 @@
 pymodule     (example);
 pydocstring  ("example functions to be consumed by python");
 
-pyexport void kwarg_parrot() { }
+pyexport void kwarg_parrot(std::string p) 
+{
+	std::cout << "kwarg_parrot(" << p << ")\n";
+}
 
 pyexport void kwarg_parrot(int voltage,
                            const char *state,

@@ -70,7 +70,7 @@ void Function::codegenCallArgs(std::ostream &out, size_t index) const
 		| enumerated()
 		| pairTransformed([](int i, const Arg &a) {
 			return a.requiresAdditionalConversion?
-				  str(boost::format("*conv%1%") % i)
+				  str(boost::format("*arg%1%.value") % i)
 				: str(boost::format("arg%1%") % i);
 		})
 		| interposed(", ");
@@ -109,62 +109,82 @@ void Function::codegenTupleUnpack(std::ostream &out, size_t index) const
 
 	ok = PyArg_ParseTupleAndKeywords(args, kw, "{{format}}", (char **)kwlist{{args}});
 
-	{{convDecls}}
-
 	)EOF";
 
-	SimpleTemplateNamespace ns;
-
-	ns.setFunc("varDecls", [&](std::ostream &out) {
-		// declare variables
-		for(const auto &pair : stream(sig) | enumerated())
-		{
-			if(pair.second.requiresAdditionalConversion)
-			{
-				out << "PyObject *";
-			}
-			else
-			{
-				out << pair.second.cppQualTypeName << " ";
-			}
-
-			out << "arg" << pair.first << ";\n";
-		}
-	});
 
 	// call PyArg_ParseTuple
 	auto kwlistStream = stream(sig)
 		| transformed([](const Arg &a) { return "\"" + a.argName + "\", "; });
 
-	auto argStream = count()
-		| take(sig.size())
-		| transformed([](int i) { return std::string(", &arg") + std::to_string(i); });
+
+
+	auto argStream = stream(sig)
+// 		| take(sig.size())
+		| enumerated()
+		| pairTransformed([](int i, const Arg &a) -> std::string { 
+			if(a.requiresAdditionalConversion)
+			{
+				std::stringstream ss;
+				ss << ", &python::detail::ConversionFunc<";
+				ss << a.cppQualTypeName;
+				ss << ">::convert";
+				ss << ", &arg" << i;
+				auto result = ss.str();
+				return result;
+			}
+			else
+			{
+				return std::string(", &arg") + std::to_string(i);
+			}
+		});
 
 	auto formatStream = stream(sig)
-		| transformed([](const Arg &a) { return a.parseTupleFmt; });
-
-
-	ns.set("kwlist", cat(kwlistStream));
-	ns.set("format", cat(formatStream));
-	ns.set("args", cat(argStream));
-	ns.setFunc("convDecls", [&](std::ostream &out) {
-
-		for(const auto &pair : stream(sig) | enumerated())
-		{
-			if(pair.second.requiresAdditionalConversion)
+		| transformed([](const Arg &a) {
+			if(a.requiresAdditionalConversion)
 			{
-				out << "auto conv" << pair.first << " = python::tryConverting<"
-					<< pair.second.cppQualTypeName << ">("
-					<< "arg" << pair.first << ");\n";
-
-				// TODO: short-circuit this logic
-				out << "ok = ok && conv" << pair.first << ";\n";
+				return std::string("O&");
 			}
-		}
+			else
+			{
+				std::string r;
+				r.push_back(a.parseTupleFmt);
+				return r;
+			}
+		});
 
-	});
 
-	t.expand(out, ns);
+	t.into(out)
+		.setFunc("varDecls", [&](std::ostream &out) {
+			// declare variables
+			for(const auto &pair : stream(sig) | enumerated())
+			{
+				if(pair.second.requiresAdditionalConversion)
+				{
+					out << "python::detail::ConversionFunc<";
+					out << pair.second.cppQualTypeName;
+					out << ">::Value ";
+					out << "arg" << pair.first << ";\n";
+
+					out << "arg" << pair.first << ".errorMessage = \"";
+					out << "expected " << pair.second.cppQualTypeName << " for argument ";
+					out << pair.first + 1 << " (" << pair.second.argName << ")\";\n";
+// 					out << "autobind::Optional<python::ConversionLoadResult<"
+// 						<< pair.second.cppQualTypeName
+// 						<< ">::type> ";
+				}
+				else
+				{
+					out << pair.second.cppQualTypeName << " ";
+					out << "arg" << pair.first << ";\n";
+				}
+
+				
+			}
+		})
+		.set("kwlist", cat(kwlistStream))
+		.set("format", cat(formatStream))
+		.set("args",   cat(argStream))
+		.expand();
 
 }
 
@@ -225,7 +245,7 @@ void Function::codegenDefinition(std::ostream &out) const
 			out << "{\n";
 			{
 				IndentingOStreambuf indenter(out, "\t");
-				
+
 				codegenTupleUnpack(out, i);
 				out << "if(ok)\n{\n";
 				{

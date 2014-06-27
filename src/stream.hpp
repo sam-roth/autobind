@@ -138,18 +138,18 @@ ConstIteratorStream<It> stream(const It &first, const It &last)
 	return {first, last};
 }
 
-// template <class SourceStream, class Transform, class Enable=void>
-// class TransformStream;
+template <class SourceStream, class Transform, class Enable=void>
+class TransformStream;
 
 #define RESULT_TYPE decltype(std::declval<Transform>()(std::declval<typename SourceStream::value_type>()))
-template <class SourceStream, class Transform, class Enable=void>
-class TransformStream //<
-// 	SourceStream,
-// 	Transform,
-// 	typename std::enable_if<
-// 		!std::is_reference<RESULT_TYPE>::value
-// 	>::type
-// >
+template <class SourceStream, class Transform>//, class Enable=void>
+class TransformStream<
+	SourceStream,
+	Transform,
+	typename std::enable_if<
+		!std::is_reference<RESULT_TYPE>::value
+	>::type
+>
 : public Stream<
 	const RESULT_TYPE,
 	TransformStream<SourceStream, Transform>
@@ -616,8 +616,8 @@ namespace detail
 		#define EXPR \
 			(f(p.first, p.second))
 
-		template <class T, class U>
-		auto operator()(const std::pair<T, U> &p) -> decltype(EXPR)
+		template <class T>
+		auto operator()(T &&p) -> decltype(EXPR)
 		{
 			return EXPR;
 		}
