@@ -50,6 +50,21 @@ bool isPyExport(clang::Decl *d)
 	return any(attributeStream(*d) | transformed(pred));
 }
 
+auto errorToDiag = [](auto decl, const auto &func) {
+	try
+	{
+		func();
+		return true;
+	}
+	catch(std::runtime_error &exc)
+	{
+		auto &diags = decl->getASTContext().getDiagnostics();
+		unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, exc.what());
+		diags.Report(decl->getLocation(), id);
+		return false;
+	}
+};
+
 
 class DiscoveryVisitor
 : public clang::RecursiveASTVisitor<DiscoveryVisitor>
@@ -87,10 +102,10 @@ public:
 	{
 		using namespace streams;
 
-		if(isPyExport(decl))
-		{
-			if(!checkInModule(decl)) return false;
+		if(!isPyExport(decl)) return true;
+		if(!checkInModule(decl)) return false;
 
+		return errorToDiag(decl, [&]{
 			auto name = decl->getQualifiedNameAsString();
 			auto unqualName = rsplit(name, "::").second;
 
@@ -124,7 +139,6 @@ public:
 						auto cdata = _wrapperEmitter.function(constructor);
 						cdata->setReturnType("void"); // prevents attempting to convert result type
 						ty->setConstructor(std::move(cdata));
-						std::cerr << "--> found constructor: "<< constructor->getQualifiedNameAsString() << "\n";
 					}
 					else if(constructor->isCopyConstructor())
 					{
@@ -141,21 +155,11 @@ public:
 				}
 
 			}
-			try
-			{
-				_modstack.back()->addExport(std::move(ty));
-			}
-			catch(std::runtime_error &exc)
-			{
-				auto &diags = decl->getASTContext().getDiagnostics();
-				unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, exc.what());
-				diags.Report(decl->getLocation(), id);
-				return false;
-			}
 
-		}
 
-		return true;
+
+			_modstack.back()->addExport(std::move(ty));
+        });
 	}
 
 	bool VisitNamespaceDecl(clang::NamespaceDecl *decl)
@@ -233,46 +237,15 @@ public:
 		return result;
 	}
 
-
-// 
-// 	bool VisitMethodDecl(clang::CXXMethodDecl *decl)
-// 	{
-// 		if(isPyExport(decl->getParent()))
-// 		{
-// 			if(!checkInModule(decl)) return false;
-// 
-// 			// check not a structor
-// 			if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(decl)
-// 			   || llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(decl))
-// 			{
-// 				return true;
-// 			}
-// 
-// 
-// 		}
-// 	}
-// 
+ 
 	bool VisitFunctionDecl(clang::FunctionDecl *decl)
 	{
-
-		if(isPyExport(decl))
-		{
-			if(!checkInModule(decl)) return false;
-			try
-			{
-				_modstack.back()->addExport(_wrapperEmitter.function(decl));
-			}
-			catch(std::runtime_error &exc)
-			{
-				auto &diags = decl->getASTContext().getDiagnostics();
-				unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, exc.what());
-				diags.Report(decl->getLocation(), id);
-				return false;
-			}
-		}
-
-
-		return true;
+		if(!isPyExport(decl)) return true;
+		if(!checkInModule(decl)) return false;
+		
+		return errorToDiag(decl, [&]{
+			_modstack.back()->addExport(_wrapperEmitter.function(decl));
+        });
 	}
 
 	const std::vector<clang::FunctionDecl *> &matches() const
