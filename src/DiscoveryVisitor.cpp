@@ -65,7 +65,7 @@ public:
 	: _wrapperEmitter(context)
 	, _modmgr(modmgr)
 	{
-				
+
 	}
 
 
@@ -85,6 +85,7 @@ public:
 
 	bool VisitCXXRecordDecl(clang::CXXRecordDecl *decl)
 	{
+		using namespace streams;
 
 		if(isPyExport(decl))
 		{
@@ -93,9 +94,18 @@ public:
 			auto name = decl->getQualifiedNameAsString();
 			auto unqualName = rsplit(name, "::").second;
 
-// 			assert(!_modstack.empty());
-			auto ty = std::make_unique<Type>(unqualName, name, "");
-			using namespace streams;
+			std::string docstring;
+
+			if(auto comment = decl->getASTContext().getRawCommentForAnyRedecl(decl))
+			{
+				if(comment->isDocumentation())
+				{
+					docstring = comment->getRawText(decl->getASTContext().getSourceManager());
+				}
+			}
+
+			auto ty = std::make_unique<Type>(unqualName, name, docstring);
+
 
 			bool foundConstructor = false;
 
@@ -103,14 +113,9 @@ public:
 			{
 				ty->setCopyAvailable();
 			}
-			
+
 			for(auto field : stream(decl->decls_begin(), decl->decls_end()))
 			{
-// 				if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field)
-// 			   		|| llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field)) 
-// 				{
-// 					continue;
-// 				}
 				if(auto constructor = llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field))
 				{
 					if(!foundConstructor && !constructor->isCopyOrMoveConstructor())
@@ -126,32 +131,17 @@ public:
 						ty->setCopyAvailable();
 					}
 				}
-				else if(llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field))
-				{
-					// ignore
-				}
 				else if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
 				{
 					if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public)
 					{
-// 						std::cerr << "--> found method: " << method->getQualifiedNameAsString() << "\n";
 						auto mdata = _wrapperEmitter.method(method);
 						ty->addMethod(std::move(mdata));
 					}
-// 					else
-// 					{
-// 						std::cerr << "--> ignored method: "<< method->getQualifiedNameAsString() << "\n";
-// 					}
 				}
 
 			}
-
 			_modstack.back()->addExport(std::move(ty));
-
-
-
-
-
 		}
 
 		return true;
@@ -191,7 +181,7 @@ public:
 		{
 			auto ann = docstringStream.front()->getAnnotation();
 			checkInModule(decl);
-			
+
 			_modstack.back()->setDocstring(ann.split(':').second);
 		}
 

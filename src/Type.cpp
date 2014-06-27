@@ -267,7 +267,7 @@ void Type::codegenDefinition(std::ostream &out) const
 		PyObject_GenericSetAttr,                                                      /* tp_setattro */       
 		python::protocols::detail::BufferProcs<{{cppName}}, {{structName}}>::get(),   /* tp_as_buffer */      
 		Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                                     /* tp_flags */          
-		"",                                                                           /* tp_doc */            
+		"{{docstring}}",                                                              /* tp_doc */
 		0,                                                                            /* tp_traverse */       
 		0,                                                                            /* tp_clear */          
 		0,                                                                            /* tp_richcompare */    
@@ -296,7 +296,8 @@ void Type::codegenDefinition(std::ostream &out) const
 		.set("reprName", reprName)
 		.set("strName", strName)
 		.set("cppName", _cppQualTypeName)
-		.set("typeName", _cppQualTypeName);
+		.set("typeName", _cppQualTypeName)
+		.set("docstring", processDocString(_docstring));
 
 	StringTemplate(typeObjectFormatString).expand(out, names);
 
