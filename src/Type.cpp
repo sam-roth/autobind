@@ -66,7 +66,7 @@ void Type::codegenDeclaration(std::ostream &out) const
 	{
 		const char *tpl = R"EOF(
 		template <>
-		struct PyConversion<{{typeName}}>
+		struct python::Conversion<{{typeName}}>
 		{
 			static PyObject *dump(const {{typeName}} &obj);
 			static {{typeName}} &load(PyObject *obj);
@@ -287,7 +287,7 @@ void Type::codegenDefinition(std::ostream &out) const
 	if(_copyAvailable)
 	{
 		const char *templateString = R"EOF(
-		PyObject * PyConversion<{{typeName}}>::dump(const {{typeName}} &obj)
+		PyObject * python::Conversion<{{typeName}}>::dump(const {{typeName}} &obj)
 		{
 			PyTypeObject *ty = &{{structName}}_Type;
 
@@ -310,7 +310,7 @@ void Type::codegenDefinition(std::ostream &out) const
 			}
 		}
 
-		{{typeName}} &PyConversion<{{typeName}}>::load(PyObject *obj)
+		{{typeName}} &python::Conversion<{{typeName}}>::load(PyObject *obj)
 		{
 			int rv = PyObject_IsInstance(obj, (PyObject *) &{{structName}}_Type);
 			if(rv < 0)

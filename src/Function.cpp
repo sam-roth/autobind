@@ -65,7 +65,7 @@ void Function::codegenCallArgs(std::ostream &out) const
 		| enumerated()
 		| pairTransformed([](int i, const Arg &a) {
 			return a.requiresAdditionalConversion?
-				  str(boost::format("PyConversion<%1%>::load(arg%2%)") % a.cppQualTypeName % i)
+				  str(boost::format("python::Conversion<%1%>::load(arg%2%)") % a.cppQualTypeName % i)
 				: str(boost::format("arg%1%") % i);
 		})
 		| interposed(", ");
@@ -141,7 +141,7 @@ void Function::codegenDefinitionBody(std::ostream &out) const
 
 		if(_returnType != "void")
 		{
-			out << "return PyConversion<" << _returnType << ">::dump(result);\n";
+			out << "return python::Conversion<" << _returnType << ">::dump(result);\n";
 		}
 		else
 		{
