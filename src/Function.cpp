@@ -7,7 +7,7 @@
 #include "streamindent.hpp"
 #include "printing.hpp"
 #include "Function.hpp"
-
+#include "StringTemplate.hpp"
 
 #include <regex>
 
@@ -40,7 +40,7 @@ std::string processDocString(const std::string &docstring)
 Function::Function(std::string name, std::vector<Arg> args,
                    std::string docstring)
 : Export(std::move(name))
-, _args(std::move(args))
+, _signatures{std::move(args)}
 , _docstring(std::move(docstring))
 , _selfTypeName("PyObject")
 {
@@ -50,27 +50,27 @@ Function::Function(std::string name, std::vector<Arg> args,
 
 }
 
-void Function::codegenCall(std::ostream &out) const
+void Function::codegenCall(std::ostream &out, size_t index) const
 {
 	if(isMethod())
 	{
 		out << "self->object.";
 	}
 	out << name();
-	codegenCallArgs(out);
+	codegenCallArgs(out, index);
 	out << ";\n";
 }
 
-void Function::codegenCallArgs(std::ostream &out) const
+void Function::codegenCallArgs(std::ostream &out, size_t index) const
 {
 
 	using namespace streams;
 
-	auto argStream = stream(_args)
+	auto argStream = stream(signature(index))
 		| enumerated()
 		| pairTransformed([](int i, const Arg &a) {
 			return a.requiresAdditionalConversion?
-				  str(boost::format("python::Conversion<%1%>::load(arg%2%)") % a.cppQualTypeName % i)
+				  str(boost::format("*conv%1%") % i)
 				: str(boost::format("arg%1%") % i);
 		})
 		| interposed(", ");
@@ -85,83 +85,127 @@ void Function::codegenDeclaration(std::ostream &out) const
 	out << boost::format(FunctionPrototype) % _implName % selfTypeName() << ";\n";
 }
 
-void Function::codegenTupleUnpack(std::ostream &out) const
+void Function::codegenTupleUnpack(std::ostream &out, size_t index) const
 {
 	using namespace streams;
-	// declare variables
-	for(const auto &pair : stream(_args) | enumerated())
-	{
-		if(pair.second.requiresAdditionalConversion)
-		{
-			out << "PyObject *";
-		}
-		else
-		{
-			out << pair.second.cppQualTypeName << " ";
-		}
 
-		out << "arg" << pair.first << ";\n";
+	const auto &sig = signature(index);
+
+
+	static const StringTemplate t = R"EOF(
+
+	if(!ok)
+	{
+		PyErr_Clear();
+		ok = true;
 	}
 
+	static const char *kwlist[] = {
+		{{kwlist}}
+		0
+	};
+
+	{{varDecls}}
+
+	ok = PyArg_ParseTupleAndKeywords(args, kw, "{{format}}", (char **)kwlist{{args}});
+
+	{{convDecls}}
+
+	)EOF";
+
+	SimpleTemplateNamespace ns;
+
+	ns.setFunc("varDecls", [&](std::ostream &out) {
+		// declare variables
+		for(const auto &pair : stream(sig) | enumerated())
+		{
+			if(pair.second.requiresAdditionalConversion)
+			{
+				out << "PyObject *";
+			}
+			else
+			{
+				out << pair.second.cppQualTypeName << " ";
+			}
+
+			out << "arg" << pair.first << ";\n";
+		}
+	});
+
 	// call PyArg_ParseTuple
-	auto kwlistStream = stream(_args)
+	auto kwlistStream = stream(sig)
 		| transformed([](const Arg &a) { return "\"" + a.argName + "\", "; });
 
-	out << boost::format("static const char *kwlist[] = {%1%0};\n") % cat(kwlistStream);
-
 	auto argStream = count()
-		| take(_args.size())
-		| transformed([](int i) { return boost::format(", &arg%d") % i; });
+		| take(sig.size())
+		| transformed([](int i) { return std::string(", &arg") + std::to_string(i); });
 
-
-
-	auto formatStream = stream(_args)
+	auto formatStream = stream(sig)
 		| transformed([](const Arg &a) { return a.parseTupleFmt; });
 
 
-	out << boost::format("if(!PyArg_ParseTupleAndKeywords(args, kw, \"%s\", (char **)kwlist%s))\n"
-	                     "    return 0;\n") % cat(formatStream) % cat(argStream);
+	ns.set("kwlist", cat(kwlistStream));
+	ns.set("format", cat(formatStream));
+	ns.set("args", cat(argStream));
+	ns.setFunc("convDecls", [&](std::ostream &out) {
+
+		for(const auto &pair : stream(sig) | enumerated())
+		{
+			if(pair.second.requiresAdditionalConversion)
+			{
+				out << "auto conv" << pair.first << " = python::tryConverting<"
+					<< pair.second.cppQualTypeName << ">("
+					<< "arg" << pair.first << ");\n";
+
+				// TODO: short-circuit this logic
+				out << "ok = ok && conv" << pair.first << ";\n";
+			}
+		}
+
+	});
+
+	t.expand(out, ns);
 
 }
 
-void Function::codegenDefinitionBody(std::ostream &out) const
+void Function::codegenDefinitionBody(std::ostream &out, size_t index) const
 {
 	// emit "try" block
 	out << "try\n{\n";
 	{
-		IndentingOStreambuf indenter2(out);
+		IndentingOStreambuf indenter2(out, "\t");
 		// call function
 		{
-			if(_lineNo >= 0)
-				out << boost::format("#line %1% %2%\n") % _lineNo % std::quoted(_origFile);
+// 			if(_lineNo >= 0)
+// 				out << boost::format("#line %1% %2%\n") % _lineNo % std::quoted(_origFile);
 
 			if(_returnType != "void")
 			{
 				out << _returnType << " result = ";
 			}
 
-			codegenCall(out);
+			codegenCall(out, index);
 		}
 
 
 		if(_returnType != "void")
 		{
-			out << "return python::Conversion<" << _returnType << ">::dump(result);\n";
+			out << "returnValue = python::Conversion<" << _returnType << ">::dump(result);\n";
 		}
 		else
 		{
-			out << "Py_RETURN_NONE;\n";
+			out << "Py_INCREF(Py_None);\nreturnValue = Py_None;\n";
 		}
 	}
 	out << "}\n";
 	out << "catch(python::Exception &)\n{\n";
-	out << "    return 0;\n";
+	out << "    returnValue = 0;\n";
 	out << "}\n";
 	out << "catch(std::exception &exc)\n{\n";
 	// emit catch block
 	{
-		IndentingOStreambuf indenter2(out);
-		out << "return PyErr_Format(PyExc_RuntimeError, \"%s\", exc.what());\n";
+		IndentingOStreambuf indenter2(out, "\t");
+		out << "returnValue = PyErr_Format(PyExc_RuntimeError, \"%s\", exc.what());\n";
 	}
 
 	out << "}\n";
@@ -172,11 +216,29 @@ void Function::codegenDefinition(std::ostream &out) const
 	out << boost::format(FunctionPrototype) % _implName % selfTypeName() << "\n{\n";
 
 	{
-		IndentingOStreambuf indenter(out);
-		codegenTupleUnpack(out);
-		codegenDefinitionBody(out);
-	}
+		IndentingOStreambuf indenter(out, "\t");
+		out << "bool ok = true;\nPyObject *returnValue = 0;\n";
 
+
+		for(size_t i = 0, count = this->signatureCount(); i < count; ++i)
+		{
+			out << "{\n";
+			{
+				IndentingOStreambuf indenter(out, "\t");
+				
+				codegenTupleUnpack(out, i);
+				out << "if(ok)\n{\n";
+				{
+					IndentingOStreambuf indenter(out, "\t");
+					codegenDefinitionBody(out, i);
+				}
+				out << "}\n";
+				out << "if(returnValue) return returnValue;\n";
+			}
+			out << "}\n";
+		}
+		out << "return returnValue;\n";
+	}
 	out << "}\n";
 }
 
@@ -192,11 +254,14 @@ void Function::codegenMethodTable(std::ostream &out) const
 
 void Function::merge(const autobind::Export &e)
 {
-// 	if(auto func = dynamic_cast<const Function *>(&e))
-// 	{
-		// TODO: implement
-// 	}
-// 	else
+	if(auto func = dynamic_cast<const Function *>(&e))
+	{
+		for(const auto &sig : func->signatures())
+		{
+			_signatures.push_back(sig);
+		}
+	}
+	else
 	{
 		Export::merge(e); // throws exception
 	}

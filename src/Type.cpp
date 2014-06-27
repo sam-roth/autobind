@@ -101,11 +101,20 @@ void Type::codegenDefinition(std::ostream &out) const
 		{{structName}} *self = ({{structName}} *)ty->tp_alloc(ty, 0);
 		if(!self) return 0;
 
+		int ok = 1;
+
 		try
 		{
 			{{unpackTuple}}
-			new((void *) &self->object) {{typeName}}{{callArgs}};
-			return (PyObject *)self;
+			if(ok)
+			{
+				new((void *) &self->object) {{typeName}}{{callArgs}};
+				return (PyObject *)self;
+			}
+			else
+			{
+				return 0;
+			}
 		}
 		catch(python::Exception &)
 		{
@@ -125,11 +134,11 @@ void Type::codegenDefinition(std::ostream &out) const
 		ns
 			.set("structName", _structName)
 			.setFunc("unpackTuple", [&](std::ostream &out) {
-				constructor().codegenTupleUnpack(out);
+				constructor().codegenTupleUnpack(out, 0);
 			})
 			.set("typeName", _cppQualTypeName)
 			.setFunc("callArgs", [&](std::ostream &out) {
-				constructor().codegenCallArgs(out);
+				constructor().codegenCallArgs(out, 0);
 			});
 
 		newFunc.expand(out, ns);

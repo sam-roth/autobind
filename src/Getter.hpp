@@ -12,9 +12,9 @@ public:
 	       std::vector<Arg> args,
 	       std::string docstring={});
 
-	virtual void codegenTupleUnpack(std::ostream &) const
+	virtual void codegenTupleUnpack(std::ostream &, size_t) const override
 	{
-		assert(this->args().empty());
+		assert(this->signatureCount() == 1 && this->signature(0).empty());
 	}
 
 	virtual void codegenDeclaration(std::ostream &) const override;
@@ -30,7 +30,7 @@ public:
 	       std::vector<Arg> args,
 	       std::string docstring={});
 	
-	virtual void codegenTupleUnpack(std::ostream &) const override;
+	virtual void codegenTupleUnpack(std::ostream &, size_t) const override;
 	virtual void codegenDeclaration(std::ostream &) const override;
 	virtual void codegenDefinition(std::ostream &) const override;
 	virtual void codegenMethodTable(std::ostream &) const override;

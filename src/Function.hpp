@@ -17,11 +17,18 @@ public:
 		std::string cppQualTypeName;
 	};
 
+	typedef std::vector<Arg> Signature;
+	typedef std::vector<Signature> Signatures;
+
 	Function(std::string name,
 	         std::vector<Arg> args,
 	         std::string docstring={});
 
-	const std::vector<Arg> &args() const { return _args; }
+	const Signatures &signatures() const { return _signatures; }
+	const Signature &signature(size_t index) const { return _signatures.at(index); }
+	size_t signatureCount() const { return _signatures.size(); }
+
+
 	const std::string &implName() const { return _implName; }
 	const std::string &unqualifiedName() const { return _unqualifiedName; }
 	const std::string &docstring() const { return _docstring; }
@@ -33,13 +40,13 @@ public:
 		_selfTypeName = s;
 	}
 
-	virtual void codegenCall(std::ostream &) const;
-	virtual void codegenCallArgs(std::ostream &) const;
-	virtual void codegenTupleUnpack(std::ostream &) const;
+	virtual void codegenCall(std::ostream &, size_t index) const;
+	virtual void codegenCallArgs(std::ostream &, size_t index) const;
+	virtual void codegenTupleUnpack(std::ostream &, size_t index) const;
 
 	virtual void codegenDeclaration(std::ostream &) const override;
 	virtual void codegenDefinition(std::ostream &) const override;
-	virtual void codegenDefinitionBody(std::ostream &) const;
+	virtual void codegenDefinitionBody(std::ostream &, size_t index) const;
 	virtual void codegenMethodTable(std::ostream &) const override;
 
 	void setSourceLocation(int lineNo, const std::string &origFile)
@@ -70,7 +77,8 @@ public:
 	virtual void merge(const Export &e) override;
 
 private:
-	std::vector<Arg> _args;
+	std::vector<std::vector<Arg>> _signatures;
+	
 	std::string _implName, _unqualifiedName, _docstring, 
 		_origFile, _returnType, _pythonName, _selfTypeName;
 	int _lineNo = -1;

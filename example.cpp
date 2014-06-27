@@ -7,6 +7,7 @@
 pymodule     (example);
 pydocstring  ("example functions to be consumed by python");
 
+pyexport void kwarg_parrot() { }
 
 pyexport void kwarg_parrot(int voltage,
                            const char *state,
@@ -16,6 +17,8 @@ pyexport void kwarg_parrot(int voltage,
 	std::cout << "-- This parrot wouldn't " << action << " if you put " << voltage << " Volts through it.\n";
 	std::cout << "-- Lovely plumage, the " << type << " -- It's " << state << "\n";
 }
+
+
 
 
 struct pyexport TestStruct

@@ -8,6 +8,8 @@
 #include <vector>
 #include <map>
 
+#include "optional.hpp"
+
 #define AB_PRIVATE_ANNOTATE(a...)        __attribute__((annotate(a)))
 #define AB_PRIVATE_TU_ANNOTATE(a...)     namespace AB_PRIVATE_ANNOTATE(a) { }
 
@@ -43,6 +45,12 @@ namespace python
 		static T &load(PyObject *);
 		static PyObject *dump(const T &);
 	#endif
+	};
+
+	template <class T>
+	struct ConversionLoadResult
+	{
+		typedef decltype(Conversion<T>::load(std::declval<PyObject *>())) type;
 	};
 
 	namespace protocols
@@ -115,7 +123,7 @@ namespace python
 				return x.str();
 			}
 		};
-		
+
 		template <class T, class Enable=void>
 		struct Repr: public detail::UnimplTag
 		{
@@ -567,4 +575,41 @@ namespace python
 			return res;
 		}
 	};
+
+
+	template <class T>
+	autobind::Optional<typename ConversionLoadResult<T>::type> 
+	tryConverting(PyObject *obj)
+	{
+		try
+		{
+			return Conversion<T>::load(obj);
+		}
+		catch(Exception &)
+		{
+			PyErr_Clear();
+		}
+		catch(std::runtime_error &)
+		{
+		}
+
+		return {};
+	}
+
+	namespace detail
+	{
+		template <class T>
+		struct ConversionFunc
+		{
+			static int convert(PyObject *pyObject, void *address)
+			{
+				auto &result = *static_cast<
+					autobind::Optional<
+						typename ConversionLoadResult<T>::type> * >(address);
+
+				return result? 1 : 0;
+			}
+		};
+	}
+
 }

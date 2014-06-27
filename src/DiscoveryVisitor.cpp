@@ -56,7 +56,7 @@ auto errorToDiag = [](auto decl, const auto &func) {
 		func();
 		return true;
 	}
-	catch(std::runtime_error &exc)
+	catch(std::exception &exc)
 	{
 		auto &diags = decl->getASTContext().getDiagnostics();
 		unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, exc.what());

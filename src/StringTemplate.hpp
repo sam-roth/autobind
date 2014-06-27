@@ -72,7 +72,14 @@ class SimpleTemplateNamespace: public ITemplateNamespace
 public:
 	const IStreamable &get(const std::string &key) const final override
 	{
-		return *_data.at(key);
+		try
+		{
+			return *_data.at(key);
+		}
+		catch(std::out_of_range &)
+		{
+			throw std::runtime_error("No such key: " + key);
+		}
 	}
 
 	template <typename T>

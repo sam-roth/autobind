@@ -32,9 +32,12 @@ void Getter::codegenDefinition(std::ostream &out) const
 {
 	out << boost::format(FunctionPrototype) % implName() % selfTypeName() << "\n{\n";
 
+
 	{
 		IndentingOStreambuf indenter(out);
-		codegenDefinitionBody(out);
+		out << "PyObject *returnValue = 0;\n";
+		codegenDefinitionBody(out, 0);
+		out << "return returnValue;\n";
 	}
 
 	out << "}\n";
@@ -48,16 +51,16 @@ Setter::Setter(std::string name, std::vector<Arg> args, std::string doc)
 	setMethod();
 }
 
-void Setter::codegenTupleUnpack(std::ostream &out) const
+void Setter::codegenTupleUnpack(std::ostream &out, size_t index) const
 {
-	assert(!this->args().empty());
+	assert(this->signatureCount() == 1 && this->signature(0).size() == 1);
 
 	static const StringTemplate template_ = R"EOF(
 	auto arg0 = python::Conversion<{{type}}>::load(value);
 	)EOF";
 
 	SimpleTemplateNamespace ns;
-	ns.set("type", this->args()[0].cppQualTypeName);
+	ns.set("type", signature(0).front().cppQualTypeName);
 
 	template_.expand(out, ns);
 }
@@ -83,6 +86,7 @@ void Setter::codegenDefinition(std::ostream &out) const
 	static const StringTemplate template_ = R"EOF(
 	static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure)
 	{
+		int ok = 1;
 		if(!value)
 		{
 			PyErr_SetString(PyExc_TypeError, "Cannot delete attribute.");
@@ -92,7 +96,10 @@ void Setter::codegenDefinition(std::ostream &out) const
 		try
 		{
 			{{tupleUnpack}}
-			self->object.{{name}}(arg0);
+			if(ok)
+			{
+				self->object.{{name}}(arg0);
+			}
 
 			return 0;
 		}
@@ -113,7 +120,7 @@ void Setter::codegenDefinition(std::ostream &out) const
 		.set("implName", implName())
 		.set("selfTypeName", selfTypeName())
 		.setFunc("tupleUnpack", [&](auto &out) { 
-			codegenTupleUnpack(out);
+			codegenTupleUnpack(out, 0);
 		})
 		.set("name", name());
 
