@@ -18,7 +18,18 @@ public:
 	virtual void codegenDeclaration(std::ostream &) const override;
 	virtual void codegenDefinition(std::ostream &) const override;
 	virtual void codegenMethodTable(std::ostream &) const override { }
+};
 
+
+class Setter: public Method
+{
+public:
+	using Method::Method;
+
+	virtual void codegenTupleUnpack(std::ostream &) const override;
+	virtual void codegenDeclaration(std::ostream &) const override;
+	virtual void codegenDefinition(std::ostream &) const override;
+	virtual void codegenMethodTable(std::ostream &) const override;
 };
 
 } // autobind

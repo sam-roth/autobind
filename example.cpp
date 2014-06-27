@@ -116,7 +116,7 @@ pyexport std::vector<int> doubled(const std::vector<int> &ints)
 
 #define ACCESSORS(f) \
 	pygetter(f) decltype(_##f) get_ ## f() const { return _##f; }\
-	void set_ ## f(decltype(_##f) value) { _##f = value; }
+	void pysetter(f) set_ ## f(decltype(_##f) value) { _##f = value; }
 
 class pyexport Noddy
 {
@@ -127,11 +127,11 @@ public:
 	ACCESSORS(number)
 	ACCESSORS(first)
 	ACCESSORS(last)
-	
+
 	pygetter(name)
 	std::string name() const
 	{
-		return _first + _last;
+		return _first + " " + _last;
 	}
 
 };
@@ -141,8 +141,7 @@ struct python::protocols::Str<Noddy>
 {
 	static std::string convert(const Noddy &n)
 	{
-		return "Noddy( " + n.name() + ")";
+		return "Noddy(" + n.name() + ")";
 	}
 };
-
 

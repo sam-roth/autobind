@@ -37,6 +37,10 @@ public:
 		return Point2D(_x + x, _y + y);
 	}
 
-	
+
+	Point2D operator +(const Point2D &other) const
+	{
+		return translated(other.x(), other.y());
+	}
 };
 

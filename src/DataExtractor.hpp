@@ -113,6 +113,12 @@ struct DataExtractor
 			if(attr->getAnnotation().startswith("pygetter:"))
 			{
 				result = genericFunction<Getter>(decl, attr->getAnnotation().rsplit(':').second);
+				break;
+			}
+			else if(attr->getAnnotation().startswith("pysetter:"))
+			{
+				result = genericFunction<Setter>(decl, attr->getAnnotation().rsplit(':').second);
+				break;
 			}
 		}
 

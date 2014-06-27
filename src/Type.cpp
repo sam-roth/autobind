@@ -179,6 +179,14 @@ void Type::codegenDefinition(std::ostream &out) const
 
 	{
 		SimpleTemplateNamespace ns;
+		std::map<std::string, Setter *> setters;
+		for(const auto &m : _methods)
+		{
+			if(auto setter = dynamic_cast<Setter *>(m.get()))
+			{
+				setters[setter->pythonName()] = setter;
+			}
+		}
 		ns
 			.set("structName", _structName)
 			.setFunc("methodTable", [&](std::ostream &out) {
@@ -190,8 +198,17 @@ void Type::codegenDefinition(std::ostream &out) const
 			.setFunc("getSetTable", [&](std::ostream &out) {
 				for(auto getter : getters())
 				{
-					out << boost::format("{(char *)\"%1%\", (getter)%2%, 0, (char *)\"%3%\", 0},\n")
-						% getter->pythonName() % getter->implName() % processDocString(getter->docstring());
+					std::string setterName = "0";
+					auto it = setters.find(getter->pythonName());
+
+					if(it != setters.end())
+					{
+						setterName = it->second->implName();
+					}
+
+					out << boost::format("{(char *)\"%1%\", (getter)%2%, (setter)%4%, (char *)\"%3%\", 0},\n")
+						% getter->pythonName() % getter->implName() % processDocString(getter->docstring())
+						% setterName;
 				}
 			});
 
