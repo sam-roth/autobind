@@ -17,6 +17,7 @@ pyexport void kwarg_parrot(int voltage,
 	std::cout << "-- Lovely plumage, the " << type << " -- It's " << state << "\n";
 }
 
+
 struct pyexport TestStruct
 {
 	TestStruct(int integer)

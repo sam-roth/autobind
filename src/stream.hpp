@@ -138,18 +138,18 @@ ConstIteratorStream<It> stream(const It &first, const It &last)
 	return {first, last};
 }
 
-template <class SourceStream, class Transform, class Enable=void>
-class TransformStream;
+// template <class SourceStream, class Transform, class Enable=void>
+// class TransformStream;
 
 #define RESULT_TYPE decltype(std::declval<Transform>()(std::declval<typename SourceStream::value_type>()))
-template <class SourceStream, class Transform>
-class TransformStream<
-	SourceStream,
-	Transform,
-	typename std::enable_if<
-		!std::is_reference<RESULT_TYPE>::value
-	>::type
->
+template <class SourceStream, class Transform, class Enable=void>
+class TransformStream //<
+// 	SourceStream,
+// 	Transform,
+// 	typename std::enable_if<
+// 		!std::is_reference<RESULT_TYPE>::value
+// 	>::type
+// >
 : public Stream<
 	const RESULT_TYPE,
 	TransformStream<SourceStream, Transform>
@@ -638,6 +638,33 @@ namespace detail
 	struct DynamicCastPartial
 	{
 	};
+
+	struct FirstGetter
+	{
+		template <class T, class U>
+		const T &operator()(const std::pair<T, U> &p) const
+		{
+			return p.first;
+		}
+	};
+
+	struct SecondGetter
+	{
+		template <class T, class U>
+		const U &operator()(const std::pair<T, U> &p) const
+		{
+			return p.second;
+		}
+	};
+
+	struct RemoveSmartPointer
+	{
+		template <class T>
+		auto operator()(const T &p) -> decltype(p.get())
+		{
+			return p.get();
+		}
+	};
 }
 
 namespace
@@ -645,8 +672,14 @@ namespace
 	detail::AddrOf addrOf __attribute__((__unused__));
 	detail::Deref deref __attribute__((__unused__));
 	detail::Nonzero nonzero __attribute__((__unused__));
-
+	detail::FirstGetter getFirst __attribute__((__unused__));
+	detail::SecondGetter getSecond __attribute__((__unused__));
+	detail::RemoveSmartPointer removeSmartPointer __attribute__((__unused__));
+	TransformPartial<detail::FirstGetter> keys __attribute__((__unused__));
+	TransformPartial<detail::SecondGetter> values __attribute__((__unused__));
 }
+
+
 
 template <class F, class G>
 detail::Composition<F, G> compose(F f, G g)

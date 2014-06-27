@@ -9,10 +9,8 @@ class Module
 	std::string _name;
 	std::string _sourceTUPath;
 	std::string _docstring;
-	std::vector<std::unique_ptr<Export>> _exports;
+	std::unordered_map<std::string, std::unique_ptr<Export>> _exports;
 public:
-
-
 	void setDocstring(const std::string &docstring)
 	{
 		_docstring = docstring;
@@ -21,13 +19,23 @@ public:
 	void addExport(std::unique_ptr<Export> e)
 	{
 		e->setModule(*this);
-		_exports.push_back(std::move(e));
-
+		auto &existingExport = _exports[e->name()];
+		if(existingExport)
+		{
+			auto newExport = existingExport->merge(*e);
+			existingExport.swap(newExport);
+		}
+		else
+		{
+			existingExport.swap(e);
+		}
 	}
 
-	const std::vector<std::unique_ptr<Export>> &exports() const
+	auto exports() const
 	{
-		return _exports;
+		return streams::stream(_exports)
+			| streams::values
+			| streams::transformed(streams::removeSmartPointer);
 	}
 
 	const std::string &name() const

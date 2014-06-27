@@ -141,7 +141,18 @@ public:
 				}
 
 			}
-			_modstack.back()->addExport(std::move(ty));
+			try
+			{
+				_modstack.back()->addExport(std::move(ty));
+			}
+			catch(std::runtime_error &exc)
+			{
+				auto &diags = decl->getASTContext().getDiagnostics();
+				unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, exc.what());
+				diags.Report(decl->getLocation(), id);
+				return false;
+			}
+
 		}
 
 		return true;
@@ -243,13 +254,23 @@ public:
 // 
 	bool VisitFunctionDecl(clang::FunctionDecl *decl)
 	{
-		
+
 		if(isPyExport(decl))
 		{
 			if(!checkInModule(decl)) return false;
-			_modstack.back()->addExport(_wrapperEmitter.function(decl));
+			try
+			{
+				_modstack.back()->addExport(_wrapperEmitter.function(decl));
+			}
+			catch(std::runtime_error &exc)
+			{
+				auto &diags = decl->getASTContext().getDiagnostics();
+				unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, exc.what());
+				diags.Report(decl->getLocation(), id);
+				return false;
+			}
 		}
-		
+
 
 		return true;
 	}

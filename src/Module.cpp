@@ -23,7 +23,7 @@ void Module::codegenDeclaration(std::ostream &out) const
 	out << "#include \"autobind.hpp\"\n";
 
 
-	for(const auto &e : _exports)
+	for(const auto &e : exports())
 	{
 		e->codegenDeclaration(out);
 	}
@@ -32,7 +32,7 @@ void Module::codegenDeclaration(std::ostream &out) const
 
 void Module::codegenDefinition(std::ostream &out) const
 {
-	for(const auto &e : _exports)
+	for(const auto &e : exports())
 	{
 		e->codegenDefinition(out);
 	}
@@ -42,7 +42,7 @@ void Module::codegenMethodTable(std::ostream &out) const
 	out << "static PyMethodDef methods[] = {\n";
 	{
 		IndentingOStreambuf indenter(out);
-		for(const auto &e : _exports)
+		for(const auto &e : exports())
 		{
 			e->codegenMethodTable(out);
 		}
@@ -81,7 +81,7 @@ void Module::codegenInit(std::ostream &out) const
 
 	{
 		IndentingOStreambuf indenter(out);
-		for(const auto &e : _exports)
+		for(const auto &e : exports())
 		{
 			e->codegenInit(out);
 		}
