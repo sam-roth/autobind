@@ -12,6 +12,17 @@ namespace
 
 
 }
+
+Getter::Getter(std::string name, std::vector<Arg> args, std::string doc)
+: autobind::Function(std::move(name),
+                     std::move(args),
+                     std::move(doc))
+{
+	setMethod();
+}
+
+
+
 void Getter::codegenDeclaration(std::ostream &out) const
 {
 	out << boost::format(FunctionPrototype) % implName() % selfTypeName() << ";\n";
@@ -27,6 +38,14 @@ void Getter::codegenDefinition(std::ostream &out) const
 	}
 
 	out << "}\n";
+}
+
+Setter::Setter(std::string name, std::vector<Arg> args, std::string doc) 
+: autobind::Function(std::move(name),
+                     std::move(args),
+                     std::move(doc))
+{
+	setMethod();
 }
 
 void Setter::codegenTupleUnpack(std::ostream &out) const

@@ -103,9 +103,9 @@ struct DataExtractor
 		return genericFunction<Function>(decl);
 	}
 
-	std::unique_ptr<Method> method(clang::CXXMethodDecl *decl)
+	std::unique_ptr<Function> method(clang::CXXMethodDecl *decl)
 	{
-		std::unique_ptr<Method> result;
+		std::unique_ptr<Function> result;
 
 		for(auto attr : streams::stream(decl->specific_attr_begin<clang::AnnotateAttr>(),
 		                                decl->specific_attr_end<clang::AnnotateAttr>()))
@@ -122,7 +122,9 @@ struct DataExtractor
 			}
 		}
 
-		if(!result) result = genericFunction<Method>(decl);
+		if(!result) result = genericFunction<Function>(decl);
+
+		result->setMethod();
 
 		return result;
 	}

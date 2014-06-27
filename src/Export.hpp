@@ -37,7 +37,7 @@ public:
 	virtual void codegenMethodTable(std::ostream &) const = 0;
 	virtual void codegenInit(std::ostream &) const { }
 
-	virtual std::unique_ptr<Export> merge(const Export &other) const
+	virtual void merge(const Export &other)
 	{
 		throw std::runtime_error("Cannot merge export " + name() + " with " + other.name());
 	}

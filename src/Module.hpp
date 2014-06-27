@@ -22,15 +22,14 @@ public:
 		auto &existingExport = _exports[e->name()];
 		if(existingExport)
 		{
-			auto newExport = existingExport->merge(*e);
-			existingExport.swap(newExport);
+			existingExport->merge(*e);
 		}
 		else
 		{
 			existingExport.swap(e);
 		}
 	}
-
+	
 	auto exports() const
 	{
 		return streams::stream(_exports)

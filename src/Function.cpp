@@ -42,18 +42,20 @@ Function::Function(std::string name, std::vector<Arg> args,
 : Export(std::move(name))
 , _args(std::move(args))
 , _docstring(std::move(docstring))
+, _selfTypeName("PyObject")
 {
 	auto parts = rsplit(this->name(), "::");
 	_unqualifiedName = parts.second;
-// 	_implName = this->name();
-// 	replace(_implName, "::", "_ns_");
-// 	_implName += "_py_bind_impl";
 	_implName = gensym(this->name());
 
 }
 
 void Function::codegenCall(std::ostream &out) const
 {
+	if(isMethod())
+	{
+		out << "self->object.";
+	}
 	out << name();
 	codegenCallArgs(out);
 	out << ";\n";
@@ -187,6 +189,19 @@ void Function::codegenMethodTable(std::ostream &out) const
 		% implName()
 		% ("\"" + docstring + "\"");
 }
+
+void Function::merge(const autobind::Export &e)
+{
+// 	if(auto func = dynamic_cast<const Function *>(&e))
+// 	{
+		// TODO: implement
+// 	}
+// 	else
+	{
+		Export::merge(e); // throws exception
+	}
+}
+
 }  // namespace autobind
 
 

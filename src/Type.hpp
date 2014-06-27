@@ -9,18 +9,18 @@ class Type: public Export
 {
 	std::string _moduleName, _cppQualTypeName, _docstring, _structName;
 	mutable std::unique_ptr<Function> _constructor;
-	std::vector<std::unique_ptr<Method>> _methods;
+	std::vector<std::unique_ptr<Function>> _methods;
 	bool _copyAvailable = false;
 public:
 	Type(std::string name,
 	     std::string cppQualTypeName,
 	     std::string docstring);
-
+	
 
 	Function &constructor() const;
-	
+
 	void setConstructor(std::unique_ptr<Function> func);
-	void addMethod(std::unique_ptr<Method> method);
+	void addMethod(std::unique_ptr<Function> method);
 	void setCopyAvailable(bool available=true) { _copyAvailable = available; }
 
 	virtual void codegenDeclaration(std::ostream &) const override;

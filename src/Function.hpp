@@ -26,8 +26,12 @@ public:
 	const std::string &unqualifiedName() const { return _unqualifiedName; }
 	const std::string &docstring() const { return _docstring; }
 
-	virtual const char *selfTypeName() const { return "PyObject"; }
+	virtual const char *selfTypeName() const { return _selfTypeName.c_str(); }
 
+	void setSelfTypeName(const std::string &s)
+	{
+		_selfTypeName = s;
+	}
 
 	virtual void codegenCall(std::ostream &) const;
 	virtual void codegenCallArgs(std::ostream &) const;
@@ -59,13 +63,21 @@ public:
 		return _pythonName.empty()? unqualifiedName() : _pythonName;
 	}
 
+	bool isMethod() const { return _isMethod; }
+	void setMethod() { _isMethod = true; }
+
+
+	virtual void merge(const Export &e) override;
+
 private:
 	std::vector<Arg> _args;
-	std::string _implName, _unqualifiedName, _docstring, _origFile, _returnType, _pythonName;
+	std::string _implName, _unqualifiedName, _docstring, 
+		_origFile, _returnType, _pythonName, _selfTypeName;
 	int _lineNo = -1;
+	bool _isMethod = false;
 };
 
-	
+
 } // autobind
 
 

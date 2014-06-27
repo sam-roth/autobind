@@ -17,7 +17,7 @@ Type::Type(std::string name,
 	_structName = gensym(this->name());
 }
 
-void Type::addMethod(std::unique_ptr<Method> method)
+void Type::addMethod(std::unique_ptr<Function> method)
 {
 	method->setSelfTypeName(_structName);
 	_methods.push_back(std::move(method));
@@ -215,36 +215,6 @@ void Type::codegenDefinition(std::ostream &out) const
 		methodsTemplate.expand(out, ns);
 	}
 
-	std::string reprName = "0";
-	std::string strName = "0";
-
-	for(const auto &method : _methods)
-	{
-		if(method->operatorName() == "repr" || method->operatorName() == "str")
-		{
-			out << boost::format("static PyObject *%1%_%2%(%1% *self)\n{\n")
-				% _structName
-				% method->operatorName();
-
-			{
-				IndentingOStreambuf indenter(out);
-				method->codegenDefinitionBody(out);
-			}
-
-			out << "}\n";
-
-			if(method->operatorName() == "repr")
-			{
-				reprName = _structName + "_repr";
-			}
-			else
-			{
-				strName = _structName + "_str";
-			}
-		}
-
-	}
-
 	const char *typeObjectFormatString = R"EOF(
 	static PyTypeObject {{structName}}_Type = {
 		PyVarObject_HEAD_INIT(NULL, 0)                     
@@ -293,8 +263,6 @@ void Type::codegenDefinition(std::ostream &out) const
 		.set("structName", _structName)
 		.set("moduleName", _moduleName)
 		.set("name", name())
-		.set("reprName", reprName)
-		.set("strName", strName)
 		.set("cppName", _cppQualTypeName)
 		.set("typeName", _cppQualTypeName)
 		.set("docstring", processDocString(_docstring));

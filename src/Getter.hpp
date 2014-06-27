@@ -1,14 +1,16 @@
 #ifndef GETTER_HPP_F3YMM1
 #define GETTER_HPP_F3YMM1
 
-#include "Method.hpp"
+#include "Function.hpp"
 
 namespace autobind {
 
-class Getter: public Method
+class Getter: public Function
 {
 public:
-	using Method::Method;
+	Getter(std::string name,
+	       std::vector<Arg> args,
+	       std::string docstring={});
 
 	virtual void codegenTupleUnpack(std::ostream &) const
 	{
@@ -21,11 +23,13 @@ public:
 };
 
 
-class Setter: public Method
+class Setter: public Function
 {
 public:
-	using Method::Method;
-
+	Setter(std::string name,
+	       std::vector<Arg> args,
+	       std::string docstring={});
+	
 	virtual void codegenTupleUnpack(std::ostream &) const override;
 	virtual void codegenDeclaration(std::ostream &) const override;
 	virtual void codegenDefinition(std::ostream &) const override;
