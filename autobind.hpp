@@ -696,7 +696,7 @@ namespace python
 			{
 				auto &result = *static_cast<typename ConversionFunc<T>::Value *>(address);
 
-				result.value = tryConverting<T>(pyObject);
+				result.value.reset(tryConverting<T>(pyObject));
 
 				if(!result.value)
 				{

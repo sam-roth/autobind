@@ -129,6 +129,32 @@ public:
 				ty->setCopyAvailable();
 			}
 
+			for(const auto &base : stream(decl->bases_begin(),
+			                              decl->bases_end()))
+			{
+				auto record = base.getType()->getAsCXXRecordDecl();
+				if(!record) continue;
+
+				for(auto field : stream(record->decls_begin(),
+				                        record->decls_end()))
+				{
+					if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field)) continue;
+
+					if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
+					{
+						if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public)
+						{
+							auto mdata = _wrapperEmitter.method(method);
+							ty->addMethod(std::move(mdata));
+						}
+					}
+				}
+
+			}
+// 			std::vector<clang::CXXRecordDecl *> bases = toVector(stream(decl->bases
+
+
+
 			for(auto field : stream(decl->decls_begin(), decl->decls_end()))
 			{
 				if(auto constructor = llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field))

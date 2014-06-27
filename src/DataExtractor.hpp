@@ -61,6 +61,7 @@ struct DataExtractor
 				auto fmt = get(_format, param->getType().getTypePtr()).get_value_or("O");
 				assert(!fmt.empty());
 				a.parseTupleFmt = fmt.front();
+				a.typeNameSpelling = param->getType().getNonReferenceType().getUnqualifiedType().getAsString();
 			}
 
 
@@ -84,7 +85,7 @@ struct DataExtractor
 		                                       std::move(docstring)));
 
 		result->setPythonName(forceName);
-		
+
 		auto sr = decl->getSourceRange();
 
 		auto &sm = decl->getASTContext().getSourceManager();

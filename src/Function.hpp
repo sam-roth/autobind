@@ -15,6 +15,7 @@ public:
 		bool requiresAdditionalConversion;
 		std::string argName;
 		std::string cppQualTypeName;
+		std::string typeNameSpelling; ///< actual type name used by client code
 	};
 
 	typedef std::vector<Arg> Signature;

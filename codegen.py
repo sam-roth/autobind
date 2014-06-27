@@ -10,17 +10,28 @@ cflags = shlex.split('-I/opt/local/include '
                      'b/clang/5.1/include '
                      '-I/usr/include '
                      '-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/c++/v1 '
-                     '-std=c++11')
+                     '-std=c++11',
+                     '-g3 -O0 ')
+#                      '-O3 -flto')
 
+
+def discard(coll, *vals):
+	for val in vals:
+		try:
+			coll.remove(val)
+		except ValueError:
+			pass
 
 
 def get_py_cflags():
 	result = shlex.split(subprocess.getoutput('python3.3-config --cflags'))
+	discard(result, '-Os', '-DNDEBUG', '-dynamic', '-O3')
 	return result
-
+	
 
 def get_py_ldflags():
 	result = shlex.split(subprocess.getoutput('python3.3-config --ldflags'))
+	discard(result, '-lintl', '-Os', '-DNDEBUG', '-dynamic', '-O3')
 	try:
 		result.remove('-lintl')
 	except ValueError:
@@ -38,7 +49,7 @@ def build(infile='example.cpp'):
 	with open(prefix + '.bind.cpp', 'wb') as f:
 
 		debugger = ['lldb', '--'] if os.environ.get('DEBUG') == '1' else []
-		
+
 		args = itertools.chain(debugger,
 		                       ['./bin/autobind', infile, '--', '-c'],
 		                       cflags,
@@ -52,6 +63,7 @@ def build(infile='example.cpp'):
 # 		subprocess.call(['./bin/autobind', infile, '--', '-c'] + cflags + py_cflags + ['-DAUTOBIND_RUN'], stdout=f)
 
 
+	print(py_cflags)
 	subprocess.check_call(['clang++'] + cflags + py_cflags + py_ldflags + ['-shared', prefix + '.bind.cpp', '-o', 
 	                                                                       prefix + '.so'])
 

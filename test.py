@@ -10,7 +10,6 @@ print(l)
 example.doubleEach(l)
 print(l)
 
-
 ts = example.TestStruct(3)
 print(repr(ts))
 
@@ -23,6 +22,6 @@ example.kwarg_parrot(voltage=480000,
 
 # example.printEach(l)
 example.foo('hey')
-
+# example.kwarg_parrot
 # print(l)
 # 

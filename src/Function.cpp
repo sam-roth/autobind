@@ -166,7 +166,7 @@ void Function::codegenTupleUnpack(std::ostream &out, size_t index) const
 					out << "arg" << pair.first << ";\n";
 
 					out << "arg" << pair.first << ".errorMessage = \"";
-					out << "expected " << pair.second.cppQualTypeName << " for argument ";
+					out << "expected object convertible to " << pair.second.typeNameSpelling << " for argument ";
 					out << pair.first + 1 << " (" << pair.second.argName << ")\";\n";
 // 					out << "autobind::Optional<python::ConversionLoadResult<"
 // 						<< pair.second.cppQualTypeName
@@ -195,19 +195,14 @@ void Function::codegenDefinitionBody(std::ostream &out, size_t index) const
 	{
 		IndentingOStreambuf indenter2(out, "\t");
 		// call function
+		if(_returnType != "void")
 		{
-// 			if(_lineNo >= 0)
-// 				out << boost::format("#line %1% %2%\n") % _lineNo % std::quoted(_origFile);
-
-			if(_returnType != "void")
-			{
-				out << _returnType << " result = ";
-			}
-
-			codegenCall(out, index);
+			out << _returnType << " result = ";
 		}
 
-
+		codegenCall(out, index);
+			
+		out << "PyErr_Clear();\n";
 		if(_returnType != "void")
 		{
 			out << "returnValue = python::Conversion<" << _returnType << ">::dump(result);\n";
@@ -251,9 +246,10 @@ void Function::codegenDefinition(std::ostream &out) const
 				{
 					IndentingOStreambuf indenter(out, "\t");
 					codegenDefinitionBody(out, i);
+					out << "return returnValue;\n";
 				}
 				out << "}\n";
-				out << "if(returnValue) return returnValue;\n";
+// 				out << "if(returnValue) return returnValue;\n";
 			}
 			out << "}\n";
 		}
@@ -264,7 +260,21 @@ void Function::codegenDefinition(std::ostream &out) const
 
 void Function::codegenMethodTable(std::ostream &out) const
 {
-	auto docstring = processDocString(_docstring);
+	std::stringstream docstringStream;
+	using namespace streams;
+	for(const auto &sig : _signatures)
+	{
+		auto argStream = stream(sig)
+			| transformed([](const auto &arg) { return arg.argName + ": " + arg.typeNameSpelling; })
+			| interposed(", ");
+
+		docstringStream << "(" << cat(argStream) << ") -> " << _returnType << "\n";
+	}
+
+	docstringStream << "\n" << _docstring;
+
+	auto docstring = processDocString(docstringStream.str());
+	
 
 	out << boost::format("{\"%1%\", (PyCFunction) %2%, METH_VARARGS|METH_KEYWORDS, %3%},\n") 
 		% pythonName()

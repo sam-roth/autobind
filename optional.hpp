@@ -55,13 +55,13 @@ public:
 	Optional(const Optional &other)
 	: _exists(false)
 	{
-		*this = other;
+		reset(other);
 	}
 
 	Optional(Optional &&other)
 	: _exists(false)
 	{
-		*this = std::move(other);
+		reset(other);
 	}
 
 	Optional()
@@ -96,6 +96,44 @@ public:
 		if(_exists) _storage.destruct();
 		_exists = false;
 	}
+
+
+	void reset(const Optional &value)
+	{
+		if(this == &value) return;
+
+		if(_exists)
+		{
+			_storage.destruct();
+			_exists = false;
+		}
+
+		if(value._exists)
+		{
+			_storage.construct(*value);
+			_exists = true;
+		}
+	}
+
+	void reset(Optional &&value)
+	{
+		if(this == &value) return;
+
+		if(_exists)
+		{
+			_storage.destruct();
+			_exists = false;
+		}
+
+		if(value._exists)
+		{
+			_storage.construct(std::move(*value));
+			value._exists = false;
+			_exists = true;
+		}
+	}
+	
+
 
 	Optional &operator =(const Optional &other)
 	{
