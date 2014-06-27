@@ -7,6 +7,7 @@
 
 
 namespace autobind {
+std::string gensym(const std::string &prefix="G");
 template <class T>
 struct IterRange
 {

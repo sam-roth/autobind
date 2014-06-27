@@ -4,6 +4,8 @@
 #include <vector>
 #include <unordered_map>
 
+#include <boost/regex.hpp>
+
 #include "clang/AST/AttrIterator.h"
 #include "clang/AST/Attr.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -28,8 +30,16 @@ namespace autobind {
 
 std::unordered_map<std::string, size_t> gensyms;
 
-std::string gensym(const std::string &prefix)
+inline std::string symbolify(const std::string &name)
 {
+	static const boost::regex pat(R"([^A-Za-z0-9]+)");
+	return boost::regex_replace(name, pat, "_");
+}
+
+std::string gensym(const std::string &prefixUnsymbolified)
+{
+	auto prefix = symbolify(prefixUnsymbolified);
+
 	auto it = gensyms.find(prefix);
 	if(it == gensyms.end())
 	{

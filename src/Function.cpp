@@ -30,9 +30,11 @@ std::string processDocString(const std::string &docstring)
 	replace(result, "\n", "\\n");
 	replace(result, "\"", "\\\"");
 
+	
 
 	return result;
 }
+
 
 
 Function::Function(std::string name, std::vector<Arg> args,
@@ -43,9 +45,10 @@ Function::Function(std::string name, std::vector<Arg> args,
 {
 	auto parts = rsplit(this->name(), "::");
 	_unqualifiedName = parts.second;
-	_implName = this->name();
-	replace(_implName, "::", "_ns_");
-	_implName += "_py_bind_impl";
+// 	_implName = this->name();
+// 	replace(_implName, "::", "_ns_");
+// 	_implName += "_py_bind_impl";
+	_implName = gensym(this->name());
 
 }
 
@@ -97,7 +100,7 @@ void Function::codegenTupleUnpack(std::ostream &out) const
 
 		out << "arg" << pair.first << ";\n";
 	}
-	
+
 	// call PyArg_ParseTuple
 	auto kwlistStream = stream(_args)
 		| transformed([](const Arg &a) { return "\"" + a.argName + "\", "; });

@@ -12,10 +12,10 @@
 #include <boost/format.hpp>
 #include "stream.hpp"
 #include "streamindent.hpp"
-
+#include "util.hpp"
 namespace autobind {
-
-std::string gensym(const std::string &prefix="G");
+	
+// std::string gensym(const std::string &prefix="G");
 std::string processDocString(const std::string &docstring);
 
 class Module;
