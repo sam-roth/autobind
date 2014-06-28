@@ -28,50 +28,9 @@
 
 namespace autobind {
 
-std::unordered_map<std::string, size_t> gensyms;
 
-inline std::string symbolify(const std::string &name)
-{
-	static const boost::regex pat(R"([^A-Za-z0-9]+)");
-	return boost::regex_replace(name, pat, "_");
-}
-
-std::string gensym(const std::string &prefixUnsymbolified)
-{
-	auto prefix = symbolify(prefixUnsymbolified);
-
-	auto it = gensyms.find(prefix);
-	if(it == gensyms.end())
-	{
-		gensyms[prefix] = 1;
-		return prefix + "$0";
-	}
-	else
-	{
-		size_t oldCount = it->second;
-		++it->second;
-		return prefix + "$" + std::to_string(oldCount);
-	}
-}
 
 static llvm::cl::OptionCategory toolCat("autobind options");
-
-template <class F>
-clang::ASTConsumer *newASTConsumer(F func)
-{
-	struct ResultType: public clang::ASTConsumer
-	{
-		F _func;
-		ResultType(F func): _func(std::move(func)) { }
-
-		void HandleTranslationUnit(clang::ASTContext &context) final override
-		{
-			_func(context);
-		}
-	};
-
-	return new ResultType(std::move(func));
-}
 
 
 namespace severity

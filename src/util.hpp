@@ -4,6 +4,24 @@
 #include <map>
 #include <string>
 #include <sstream>
+#include <clang/AST/ASTConsumer.h>
+
+template <class F>
+clang::ASTConsumer *newASTConsumer(F func)
+{
+	struct ResultType: public clang::ASTConsumer
+	{
+		F _func;
+		ResultType(F func): _func(std::move(func)) { }
+
+		void HandleTranslationUnit(clang::ASTContext &context) final override
+		{
+			_func(context);
+		}
+	};
+
+	return new ResultType(std::move(func));
+}
 
 
 namespace autobind {

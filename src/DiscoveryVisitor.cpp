@@ -138,8 +138,9 @@ public:
 				for(auto field : stream(record->decls_begin(),
 				                        record->decls_end()))
 				{
-					if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field)) continue;
-
+					if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field)
+					   || llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field)) continue;
+					
 					if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
 					{
 						if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public)
@@ -170,6 +171,10 @@ public:
 					{
 						ty->setCopyAvailable();
 					}
+				}
+				else if(llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field))
+				{
+					// ignore -- don't bind destructors
 				}
 				else if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
 				{

@@ -4,8 +4,16 @@ project(autobind)
 
 include(PrecompiledHeader.cmake)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(LLVM_CONFIG_EXECUTABLE "/opt/local/bin/llvm-config-mp-3.3")
-set(CMAKE_CXX_FLAGS "-g -std=c++1y -stdlib=libc++ -O0 -Wall -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS")
+
+
+# -fvisibility-inlines-hidden: fixes linker warnings about symbol visibility when linking with Clang
+# -Wno-deprecated-register: suppress warnings caused by Boost.Regex
+
+set(CMAKE_CXX_FLAGS "-g -std=c++1y -stdlib=libc++ -O0 -Wall -D__STDC_CONSTANT_MACROS")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__STDC_LIMIT_MACROS -fvisibility-inlines-hidden -Wno-deprecated-register")
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "lib")
@@ -31,7 +39,6 @@ add_library(
 	src/Function.cpp
 	src/DiscoveryVisitor.cpp
 	src/Type.cpp
-	src/Method.cpp
 	src/Getter.cpp
 	src/util.cpp
 	src/Module.cpp
@@ -52,3 +59,7 @@ target_link_libraries(autobind autobind_core)
 
 add_executable(test src/test.cpp)
 target_link_libraries(test autobind_core)
+
+add_library(autobind_plugin SHARED src/plugin.cpp)
+target_link_libraries(autobind_plugin autobind_core)
+
