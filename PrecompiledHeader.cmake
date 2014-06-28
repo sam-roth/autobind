@@ -107,7 +107,7 @@ MACRO(ADD_PRECOMPILED_HEADER _targetName _input)
     SET_TARGET_PROPERTIES(${_targetName} PROPERTIES COMPILE_FLAGS "-include ${CMAKE_CURRENT_SOURCE_DIR}/${_input} -Winvalid-pch")
    get_target_property(_targetFlags ${_targetName} COMPILE_FLAGS)
     message("target properties: ${_targetFlags}")
-  ENDIF(CMAKE_COMPILER_IS_GNUCXX)
-    
+  ENDIF()
+
 
 ENDMACRO()
