@@ -190,7 +190,7 @@ public:
 		}
 
 		auto ty = std::make_unique<Type>(unqualName, name, docstring);
-
+		
 
 		bool foundConstructor = false;
 

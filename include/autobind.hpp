@@ -45,15 +45,9 @@ namespace python
 	#else
 		// prevents compile errors while running autobind about missing specializations that
 		// will be automatically filled in later.
-		static T load(PyObject *)
-		{
-			throw std::runtime_error("No conversion");
-		}
-		static PyObject *dump(const T &)
-		{
-			throw std::runtime_error("No conversion");
-		}
-// 		static const char *pythonTypeName();
+		static T &load(PyObject *);
+		static PyObject *dump(const T &);
+		static const char *pythonTypeName();
 	#endif
 	};
 
