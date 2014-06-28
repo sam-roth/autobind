@@ -21,7 +21,7 @@ struct IStreamable
 template <typename T>
 class StreamableWrapper: public IStreamable
 {
-	const T &_object;
+	T _object;
 public:
 	template <class U>
 	StreamableWrapper(U &&object)
@@ -36,12 +36,28 @@ public:
 template <typename T>
 struct ArrayDecay
 {
+	typedef typename std::remove_reference<T>::type U;
+
 	typedef typename std::conditional<
-		std::is_array<T>::value,
-		const typename std::remove_extent<T>::type *,
-		T
+		std::is_array<typename std::remove_cv<U>::type>::value,
+		const typename std::remove_extent<U>::type *,
+		U
 	>::type type;
 };
+
+
+template <typename T>
+struct RefArrayDecay
+{
+	typedef typename std::remove_reference<T>::type U;
+
+	typedef typename std::conditional<
+		std::is_array<typename std::remove_cv<U>::type>::value,
+		const typename std::remove_extent<U>::type *,
+		const U &
+	>::type type;
+};
+
 
 template <typename T>
 std::unique_ptr<IStreamable> makeStreamable(const T &object)
@@ -80,6 +96,12 @@ namespace {
 	boost::regex templateRegex("\\{\\{(.*?)\\}\\}",
 	                           boost::regex::ECMAScript);
 }
+/// @deprecated This class is unsafe to use because you must manually ensure that objects passed
+///   to set() outlive the namespace.
+///   Use StringTemplate::into() instead, which returns a template namespace with only
+///   private constructors, thus forcing template expansion to occur in the same statement
+///   as adding the values to the namespace. This means that the objects will be in scope for
+///   template instantiation.
 
 class SimpleTemplateNamespace: public ITemplateNamespace
 {
