@@ -4,15 +4,17 @@ import subprocess, shlex, os.path
 import os
 import itertools
 
-cflags = shlex.split('-I/opt/local/include '
+cflags = shlex.split('-I../include '
+                     '-I/opt/local/include '
                      '-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include '
                      '-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../li'
                      'b/clang/5.1/include '
                      '-I/usr/include '
                      '-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/c++/v1 '
-                     '-std=c++11',
+                     '-std=c++11 '
+                     '-Wall '
+                     '-Wno-mismatched-tags '
                      '-g3 -O0 ')
-#                      '-O3 -flto')
 
 
 def discard(coll, *vals):
@@ -25,17 +27,13 @@ def discard(coll, *vals):
 
 def get_py_cflags():
 	result = shlex.split(subprocess.getoutput('python3.3-config --cflags'))
-	discard(result, '-Os', '-DNDEBUG', '-dynamic', '-O3')
+	discard(result, '-Wall', '-Os', '-DNDEBUG', '-dynamic', '-O3')
 	return result
-	
+
 
 def get_py_ldflags():
 	result = shlex.split(subprocess.getoutput('python3.3-config --ldflags'))
-	discard(result, '-lintl', '-Os', '-DNDEBUG', '-dynamic', '-O3')
-	try:
-		result.remove('-lintl')
-	except ValueError:
-		pass
+	discard(result, '-Wall', '-lintl', '-Os', '-DNDEBUG', '-dynamic', '-O3')
 
 	return result
 
@@ -51,7 +49,7 @@ def build(infile='example.cpp'):
 		debugger = ['lldb', '--'] if os.environ.get('DEBUG') == '1' else []
 
 		args = itertools.chain(debugger,
-		                       ['./bin/autobind', infile, '--', '-c'],
+		                       ['../bin/autobind', infile, '--', '-c'],
 		                       cflags,
 		                       py_cflags,
 		                       ['-DAUTOBIND_RUN'])
@@ -60,7 +58,6 @@ def build(infile='example.cpp'):
 
 		subprocess.call(list(args), **kwargs)
 
-# 		subprocess.call(['./bin/autobind', infile, '--', '-c'] + cflags + py_cflags + ['-DAUTOBIND_RUN'], stdout=f)
 
 
 	print(py_cflags)

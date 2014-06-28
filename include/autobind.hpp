@@ -283,28 +283,25 @@ namespace python
 
 	}
 
-	namespace
+	inline void disposePyObject(PyObject *o)
 	{
-		void disposePyObject(PyObject *o)
-		{
-			Py_XDECREF(o);
-		}
-
-		void keepPyObject(PyObject *o) { }
-
-		std::shared_ptr<PyObject> borrow(PyObject *o)
-		{
-			Py_XINCREF(o);
-			return std::shared_ptr<PyObject>(o, disposePyObject);
-		}
-
-		std::shared_ptr<PyObject> getNone()
-		{
-			Py_XINCREF(Py_None);
-			return std::shared_ptr<PyObject>(Py_None, disposePyObject);
-		}
-
+		Py_XDECREF(o);
 	}
+
+	inline void keepPyObject(PyObject *o) { }
+
+	inline std::shared_ptr<PyObject> borrow(PyObject *o)
+	{
+		Py_XINCREF(o);
+		return std::shared_ptr<PyObject>(o, disposePyObject);
+	}
+	
+	inline std::shared_ptr<PyObject> getNone()
+	{
+		Py_XINCREF(Py_None);
+		return std::shared_ptr<PyObject>(Py_None, disposePyObject);
+	}
+
 
 	inline bool isinstance(PyObject &obj, PyObject &ty)
 	{

@@ -8,7 +8,7 @@ set(LLVM_CONFIG_EXECUTABLE "/opt/local/bin/llvm-config-mp-3.3")
 set(CMAKE_CXX_FLAGS "-g -std=c++1y -stdlib=libc++ -O0 -Wall -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "lib")
-
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "lib")
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR})
 find_package(Boost COMPONENTS system regex)
 find_package(LLVM REQUIRED)
