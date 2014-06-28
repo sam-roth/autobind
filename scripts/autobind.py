@@ -121,7 +121,8 @@ def main():
         with tempfile.NamedTemporaryFile('w', dir=os.path.dirname(main_file), suffix='.cpp') as f:
             CXXFLAGS += args.cxxflags
             f.write(run_autobind(main_file))
-
+            f.flush()
+            
             stem, ext = os.path.splitext(os.path.basename(main_file))
 
             lib_suffix = sysconfig.get_config_var('EXT_SUFFIX')
@@ -136,7 +137,7 @@ def main():
                                                   stem + lib_suffix)]) 
 
 
-            
+
     verbs = ap.add_subparsers(metavar='VERB')
 
     help_ = verbs.add_parser('help', help='show the help for the verb')

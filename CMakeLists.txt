@@ -35,7 +35,8 @@ include_directories(
 
 add_library(
 	autobind_core
-
+	SHARED
+	
 	src/Function.cpp
 	src/DiscoveryVisitor.cpp
 	src/Type.cpp

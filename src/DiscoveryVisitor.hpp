@@ -11,7 +11,8 @@ namespace autobind {
 
 
 void discoverTranslationUnit(autobind::ModuleManager &mgr,
-                             clang::TranslationUnitDecl &tu);
+                             clang::TranslationUnitDecl &tu,
+                             clang::CompilerInstance &compiler);
 
 
 

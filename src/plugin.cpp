@@ -15,10 +15,10 @@ protected:
 	clang::ASTConsumer *CreateASTConsumer(clang::CompilerInstance &ci,
 	                                      llvm::StringRef path)
 	{
-		return newASTConsumer([path](clang::ASTContext &ctx) {
+		return newASTConsumer([path, &ci](clang::ASTContext &ctx) {
 			ModuleManager mgr;
-			discoverTranslationUnit(mgr, *ctx.getTranslationUnitDecl());
-
+			discoverTranslationUnit(mgr, *ctx.getTranslationUnitDecl(), ci);
+			
 
 			for(const auto &item : mgr.moduleStream())
 			{

@@ -100,10 +100,10 @@ public:
 	*CreateASTConsumer(clang::CompilerInstance &compiler,
 	                   llvm::StringRef inFile) override
 	{
-		return newASTConsumer([inFile](clang::ASTContext &ctx) {
+		return newASTConsumer([inFile, &compiler](clang::ASTContext &ctx) {
 			ModuleManager mgr;
-			discoverTranslationUnit(mgr, *ctx.getTranslationUnitDecl());
-
+			discoverTranslationUnit(mgr, *ctx.getTranslationUnitDecl(), compiler);
+			
 			
 			for(const auto &item : mgr.moduleStream())
 			{
