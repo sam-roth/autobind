@@ -51,6 +51,14 @@ bool isPyExport(clang::Decl *d)
 	return any(attributeStream(*d) | transformed(pred));
 }
 
+bool isPyNoExport(clang::Decl *d)
+{
+	using namespace streams;
+
+	auto pred = [](auto a) { return a->getAnnotation() == "pynoexport"; };
+	return any(attributeStream(*d) | transformed(pred));
+}
+
 auto errorToDiag = [](auto decl, const auto &func) {
 	try
 	{
@@ -117,7 +125,7 @@ public:
 	}
 
 
-	void validateExportedFunctionDecl(clang::FunctionDecl *func)
+	void validateExportedFunctionDecl(const clang::FunctionDecl *func)
 	{
 		// TODO: defer this until after visiting the entire TU
 
@@ -200,6 +208,19 @@ public:
 		}
 
 
+		std::set<const clang::CXXMethodDecl *> found;
+
+		auto addMethod = [&](clang::CXXMethodDecl *md) {
+			for(auto overriden : stream(md->begin_overridden_methods(),
+			                            md->end_overridden_methods()))
+			{
+				found.erase(overriden);
+			}
+			if(!isPyNoExport(md))
+			{
+				found.insert(md);
+			}
+		};
 
 		for(const auto &base : stream(decl->bases_begin(),
 		                              decl->bases_end()))
@@ -217,12 +238,11 @@ public:
 
 				if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
 				{
+
 					if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public
 					   && !method->isTemplateDecl())
 					{
-						this->validateExportedFunctionDecl(method);
-						auto mdata = _wrapperEmitter.method(method);
-						ty->addMethod(std::move(mdata));
+						addMethod(method);
 					}
 				}
 			}
@@ -232,9 +252,11 @@ public:
 
 		for(auto field : stream(decl->decls_begin(), decl->decls_end()))
 		{
+
 			if(auto constructor = llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field))
 			{
-				if(!foundConstructor && !constructor->isCopyOrMoveConstructor())
+				if(!foundConstructor && !constructor->isCopyOrMoveConstructor()
+				   && !isPyNoExport(constructor))
 				{
 					foundConstructor = true;
 					auto cdata = _wrapperEmitter.function(constructor);
@@ -252,15 +274,19 @@ public:
 			}
 			else if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
 			{
-				this->validateExportedFunctionDecl(method);
 				if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public
 				   && !method->isTemplateDecl())
 				{
-					auto mdata = _wrapperEmitter.method(method);
-					ty->addMethod(std::move(mdata));
+					addMethod(method);
 				}
 			}
+		}
 
+		for(auto method : found)
+		{
+			validateExportedFunctionDecl(method);
+			auto mdata = _wrapperEmitter.method(const_cast<clang::CXXMethodDecl *>(method));
+			ty->addMethod(std::move(mdata));
 		}
 
 
