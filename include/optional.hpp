@@ -9,15 +9,15 @@
 #define OPTIONAL_HPP_30062Y
 #include <utility>
 #include <ostream>
-
+#include <type_traits>
+#define ENABLE_IF(x...) typename std::enable_if<(x)>::type
 namespace autobind {
-
 namespace detail
 {
 	template <class T>
 	class Storage
 	{
-		char data[sizeof(T)];
+		typename std::aligned_storage<sizeof(T), alignof(T)>::type data;
 
 	public:
 
@@ -43,7 +43,29 @@ namespace detail
 		}
 	};
 
+	template <class T>
+	class Storage<T &>
+	{
+		T *data;
+	public:
+		void construct(T &ref)
+		{
+			data = &ref;
+		}
+
+		T &get() const
+		{
+			return *data;
+		}
+
+		void destruct()
+		{
+
+		}
+	};
+
 	struct EmplaceTag{};
+	struct DummyTag{};
 }
 
 template <class T>
@@ -61,7 +83,7 @@ public:
 	Optional(Optional &&other)
 	: _exists(false)
 	{
-		reset(other);
+		reset(std::move(other));
 	}
 
 	Optional()
@@ -76,6 +98,11 @@ public:
 		_exists = true;
 	}
 
+	template <
+		class U,
+		class=ENABLE_IF(std::is_same<T, U>::value 
+		                && !std::is_reference<T>::value)
+	>
 	Optional(T &&value)
 	: _exists(false)
 	{
@@ -115,7 +142,10 @@ public:
 		}
 	}
 
-	void reset(Optional &&value)
+
+	template <class U, class=ENABLE_IF(!std::is_reference<T>::value 
+	                                   && std::is_same<Optional<T>, U>::value)>
+	void reset(U &&value)
 	{
 		if(this == &value) return;
 
@@ -132,7 +162,7 @@ public:
 			_exists = true;
 		}
 	}
-	
+
 
 
 	Optional &operator =(const Optional &other)
@@ -205,12 +235,14 @@ public:
 		return _storage.get();
 	}
 
-	const T *operator ->() const
+	const typename std::remove_reference<T>::type 
+	*operator ->() const
 	{
 		return &get();
 	}
 
-	T *operator ->()
+	typename std::remove_reference<T>::type 
+	*operator ->()
 	{
 		return &get();
 	}
@@ -275,6 +307,7 @@ Optional<U> makeOptional(Args &&... args)
 
 } // autobind
 
+#undef ENABLE_IF
 #endif // OPTIONAL_HPP_30062Y
 
 

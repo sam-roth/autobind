@@ -20,6 +20,7 @@
 #define AB_DOCSTRING(text)               AB_PRIVATE_TU_ANNOTATE("pydocstring:" text)
 #define AB_GETTER(name)                  AB_PRIVATE_ANNOTATE("pygetter:" #name)
 #define AB_SETTER(name)                  AB_PRIVATE_ANNOTATE("pysetter:" #name)
+#define AB_NOEXPORT                      AB_PRIVATE_ANNOTATE("pynoexport")
 
 #ifndef AB_NO_KEYWORDS
 	#define pyexport    AB_EXPORT
@@ -451,6 +452,13 @@ namespace python
 	template <class T>
 	class Handle
 	{
+		static_assert(!std::is_reference<T>::value,
+		              "Handle<T>: T should not be a reference.");
+
+		static_assert(std::is_reference<typename ConversionLoadResult<T>::type>::value,
+		              "Handle<T> may only be used with types for which python::Conversion<T> returns "
+		              "a reference.");
+
 		ObjectRef _obj; // held to ensure refcount remains > 0
 		T &_ref;
 	public:
@@ -471,6 +479,11 @@ namespace python
 		}
 
 		T &data() const
+		{
+			return _ref;
+		}
+
+		T &get() const
 		{
 			return _ref;
 		}
