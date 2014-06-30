@@ -88,12 +88,15 @@ void Type::codegenDefinition(std::ostream &out) const
 	{
 		PyObject_HEAD
 		{{typeName}} object;
+		bool initialized;
 	};
-	
+
 	static PyObject *{{structName}}_new(PyTypeObject *ty, PyObject *args, PyObject *kw)
 	{
 		{{structName}} *self = ({{structName}} *)ty->tp_alloc(ty, 0);
 		if(!self) return 0;
+
+		self->initialized = false;
 
 		int ok = 1;
 
@@ -103,10 +106,12 @@ void Type::codegenDefinition(std::ostream &out) const
 			if(ok)
 			{
 				new((void *) &self->object) {{typeName}}{{callArgs}};
+				self->initialized = true;
 				return (PyObject *)self;
 			}
 			else
 			{
+				Py_XDECREF(self);
 				return 0;
 			}
 		}
@@ -144,7 +149,8 @@ void Type::codegenDefinition(std::ostream &out) const
 
 	static void {{structName}}_dealloc({{structName}} *self)
 	{
-		self->object.{{destructor}}();
+		if(self->initialized)
+			self->object.{{destructor}}();
 		Py_TYPE(self)->tp_free((PyObject *)self);
 	}
 
