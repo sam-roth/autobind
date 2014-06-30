@@ -14,7 +14,7 @@ public:
 
 	virtual void codegenTupleUnpack(std::ostream &, size_t) const override
 	{
-		assert(this->signatureCount() == 1 && this->signature(0).empty());
+		assert(this->signatureCount() == 1 && this->signature(0).args.empty());
 	}
 
 	virtual void codegenDeclaration(std::ostream &) const override;

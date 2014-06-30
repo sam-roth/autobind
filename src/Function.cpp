@@ -25,7 +25,8 @@ namespace
 
 std::string processDocString(const std::string &docstring)
 {
-	auto result = std::regex_replace(docstring, std::regex("(^|\n)\\s*(///|\\*)"), "$1");
+	auto result = std::regex_replace(docstring, std::regex("(^|\n+)\\s*(///|\\*)"), "$1");
+	result = std::regex_replace(result, std::regex("(^|\n+)\\s+"), "$1");
 	replace(result, "\\", "\\\\");
 	replace(result, "\n", "\\n");
 	replace(result, "\"", "\\\"");
@@ -40,10 +41,13 @@ std::string processDocString(const std::string &docstring)
 Function::Function(std::string name, std::vector<Arg> args,
                    std::string docstring)
 : Export(std::move(name))
-, _signatures{std::move(args)}
 , _docstring(std::move(docstring))
 , _selfTypeName("PyObject")
 {
+	Signature s;
+	s.args = std::move(args);
+	_signatures.push_back(std::move(s));
+
 	auto parts = rsplit(this->name(), "::");
 	_unqualifiedName = parts.second;
 	_implName = gensym(this->name());
@@ -66,7 +70,7 @@ void Function::codegenCallArgs(std::ostream &out, size_t index) const
 
 	using namespace streams;
 
-	auto argStream = stream(signature(index))
+	auto argStream = stream(signature(index).args)
 		| enumerated()
 		| pairTransformed([](int i, const Arg &a) {
 			return a.requiresAdditionalConversion?
@@ -113,13 +117,12 @@ void Function::codegenTupleUnpack(std::ostream &out, size_t index) const
 
 
 	// call PyArg_ParseTuple
-	auto kwlistStream = stream(sig)
+	auto kwlistStream = stream(sig.args)
 		| transformed([](const Arg &a) { return "\"" + a.argName + "\", "; });
 
 
 
-	auto argStream = stream(sig)
-// 		| take(sig.size())
+	auto argStream = stream(sig.args)
 		| enumerated()
 		| pairTransformed([](int i, const Arg &a) -> std::string { 
 			if(a.requiresAdditionalConversion)
@@ -138,7 +141,7 @@ void Function::codegenTupleUnpack(std::ostream &out, size_t index) const
 			}
 		});
 
-	auto formatStream = stream(sig)
+	auto formatStream = stream(sig.args)
 		| transformed([](const Arg &a) {
 			if(a.requiresAdditionalConversion)
 			{
@@ -156,7 +159,7 @@ void Function::codegenTupleUnpack(std::ostream &out, size_t index) const
 	t.into(out)
 		.setFunc("varDecls", [&](std::ostream &out) {
 			// declare variables
-			for(const auto &pair : stream(sig) | enumerated())
+			for(const auto &pair : stream(sig.args) | enumerated())
 			{
 				if(pair.second.requiresAdditionalConversion)
 				{
@@ -168,9 +171,6 @@ void Function::codegenTupleUnpack(std::ostream &out, size_t index) const
 					out << "arg" << pair.first << ".errorMessage = \"";
 					out << "expected object convertible to " << pair.second.typeNameSpelling << " for argument ";
 					out << pair.first + 1 << " (" << pair.second.argName << ")\";\n";
-// 					out << "autobind::Optional<python::ConversionLoadResult<"
-// 						<< pair.second.cppQualTypeName
-// 						<< ">::type> ";
 				}
 				else
 				{
@@ -178,7 +178,7 @@ void Function::codegenTupleUnpack(std::ostream &out, size_t index) const
 					out << "arg" << pair.first << ";\n";
 				}
 
-				
+
 			}
 		})
 		.set("kwlist", cat(kwlistStream))
@@ -191,21 +191,24 @@ void Function::codegenTupleUnpack(std::ostream &out, size_t index) const
 void Function::codegenDefinitionBody(std::ostream &out, size_t index) const
 {
 	// emit "try" block
+
+	auto &sig = signature(index);
+
 	out << "try\n{\n";
 	{
 		IndentingOStreambuf indenter2(out, "\t");
 		// call function
-		if(_returnType != "void")
+		if(sig.cppReturnTypeName != "void")
 		{
-			out << _returnType << " result = ";
+			out << sig.cppReturnTypeName << " result = ";
 		}
 
 		codegenCall(out, index);
-			
+
 		out << "PyErr_Clear();\n";
-		if(_returnType != "void")
+		if(sig.cppReturnTypeName != "void")
 		{
-			out << "returnValue = python::Conversion<" << _returnType << ">::dump(result);\n";
+			out << "returnValue = python::Conversion<" << sig.cppReturnTypeName << ">::dump(result);\n";
 		}
 		else
 		{
@@ -264,17 +267,17 @@ void Function::codegenMethodTable(std::ostream &out) const
 	using namespace streams;
 	for(const auto &sig : _signatures)
 	{
-		auto argStream = stream(sig)
+		auto argStream = stream(sig.args)
 			| transformed([](const auto &arg) { return arg.argName + ": " + arg.typeNameSpelling; })
 			| interposed(", ");
 
-		docstringStream << "(" << cat(argStream) << ") -> " << _returnType << "\n";
+		docstringStream << "(" << cat(argStream) << ") -> " << sig.returnTypeSpelling << "\n";
 	}
 
 	docstringStream << "\n" << _docstring;
 
 	auto docstring = processDocString(docstringStream.str());
-	
+
 
 	out << boost::format("{\"%1%\", (PyCFunction) %2%, METH_VARARGS|METH_KEYWORDS, %3%},\n") 
 		% pythonName()
@@ -289,6 +292,11 @@ void Function::merge(const autobind::Export &e)
 		for(const auto &sig : func->signatures())
 		{
 			_signatures.push_back(sig);
+		}
+
+		if(!func->docstring().empty())
+		{
+			_docstring += "\n\n" + func->docstring();
 		}
 	}
 	else

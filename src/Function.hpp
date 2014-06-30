@@ -18,7 +18,14 @@ public:
 		std::string typeNameSpelling; ///< actual type name used by client code
 	};
 
-	typedef std::vector<Arg> Signature;
+	typedef std::vector<Arg> Args;
+
+	struct Signature
+	{
+		Args args;
+		std::string cppReturnTypeName, returnTypeSpelling;
+	};
+
 	typedef std::vector<Signature> Signatures;
 
 	Function(std::string name,
@@ -56,9 +63,22 @@ public:
 		_origFile = origFile;
 	}
 
-	void setReturnType(const std::string &s)
+	void setReturnType(const std::string &name,
+	                   const std::string &spelling="")
 	{
-		_returnType = s;
+		assert(!_signatures.empty());
+
+		auto &sig = _signatures[0];
+		if(spelling.empty())
+		{
+			sig.cppReturnTypeName = name;
+			sig.returnTypeSpelling = name;
+		}
+		else
+		{
+			sig.cppReturnTypeName = name;
+			sig.returnTypeSpelling = spelling;
+		}
 	}
 
 	void setPythonName(const std::string &s)
@@ -78,10 +98,10 @@ public:
 	virtual void merge(const Export &e) override;
 
 private:
-	std::vector<std::vector<Arg>> _signatures;
-	
+	Signatures _signatures;
+
 	std::string _implName, _unqualifiedName, _docstring, 
-		_origFile, _returnType, _pythonName, _selfTypeName;
+		_origFile, _pythonName, _selfTypeName;
 	int _lineNo = -1;
 	bool _isMethod = false;
 };

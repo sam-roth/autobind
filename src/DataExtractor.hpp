@@ -93,8 +93,9 @@ struct DataExtractor
 		auto fileName = sm.getFilename(sr.getEnd());
 
 		result->setSourceLocation(firstLineNum, fileName);
-		result->setReturnType(removeRefsAndCVR(decl->getResultType()).getAsString());
-
+		result->setReturnType(removeRefsAndCVR(decl->getResultType()).getAsString(),
+		                      decl->getResultType().getNonReferenceType()
+		                      .getUnqualifiedType().getAsString());
 		return result;
 
 	}

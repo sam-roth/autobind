@@ -53,16 +53,15 @@ Setter::Setter(std::string name, std::vector<Arg> args, std::string doc)
 
 void Setter::codegenTupleUnpack(std::ostream &out, size_t index) const
 {
-	assert(this->signatureCount() == 1 && this->signature(0).size() == 1);
-
+	assert(this->signatureCount() == 1 && this->signature(0).args.size() == 1);
+	
 	static const StringTemplate template_ = R"EOF(
 	auto arg0 = python::Conversion<{{type}}>::load(value);
 	)EOF";
 
-	SimpleTemplateNamespace ns;
-	ns.set("type", signature(0).front().cppQualTypeName);
-
-	template_.expand(out, ns);
+	template_.into(out)
+		.set("type", signature(0).args.front().cppQualTypeName)
+		.expand();
 }
 
 
@@ -72,12 +71,10 @@ void Setter::codegenDeclaration(std::ostream &out) const
 	static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure);
 	)EOF";
 
-	SimpleTemplateNamespace ns;
-	ns
+	template_.into(out)
 		.set("implName", implName())
-		.set("selfTypeName", selfTypeName());
-
-	template_.expand(out, ns);
+		.set("selfTypeName", selfTypeName())
+		.expand();
 }
 
 
@@ -115,16 +112,14 @@ void Setter::codegenDefinition(std::ostream &out) const
 	}
 	)EOF";
 
-	SimpleTemplateNamespace ns;
-	ns
+	template_.into(out)
 		.set("implName", implName())
 		.set("selfTypeName", selfTypeName())
 		.setFunc("tupleUnpack", [&](auto &out) { 
 			codegenTupleUnpack(out, 0);
 		})
-		.set("name", name());
-
-	template_.expand(out, ns);
+		.set("name", name())
+		.expand();
 }
 
 
