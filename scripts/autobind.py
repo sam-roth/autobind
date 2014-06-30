@@ -14,10 +14,17 @@ import sys
 
 CXX = os.environ.get('CXX', 'c++')
 
+
 AB = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                   os.path.pardir,
                   'bin',
                   'autobind')
+if not os.path.exists(AB):
+    AB = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                      os.path.pardir,
+                      'build',
+                      'bin',
+                      'autobind')
 
 AB_INCLUDE = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                           os.path.pardir,
