@@ -43,7 +43,7 @@ void Type::codegenDeclaration(std::ostream &out) const
 {
 
 
-	StringTemplate declTemplate = R"EOF(
+	static const StringTemplate declTemplate = R"EOF(
 	class {{typeName}};
 	struct {{structName}};
 
@@ -52,19 +52,17 @@ void Type::codegenDeclaration(std::ostream &out) const
 	static void      {{structName}}_dealloc({{structName}} *self);
 	)EOF";
 
-
-	SimpleTemplateNamespace ns;
-	ns
+	declTemplate.into(out)
 		.set("structName", _structName)
-		.set("typeName", _cppQualTypeName);
+		.set("typeName", _cppQualTypeName)
+		.expand();
 
-	declTemplate.expand(out, ns);
 
 	for(const auto &method : _methods) method->codegenDeclaration(out);
 
 	if(_copyAvailable)
 	{
-		const char *tpl = R"EOF(
+		static const StringTemplate tpl = R"EOF(
 		template <>
 		struct python::Conversion<{{typeName}}>
 		{
@@ -74,21 +72,17 @@ void Type::codegenDeclaration(std::ostream &out) const
 		};
 		)EOF";
 
-		SimpleTemplateNamespace ns;
-		ns
-			.set("typeName", _cppQualTypeName);
-		StringTemplate(tpl).expand(out, ns);
-
+		tpl.into(out)
+			.set("typeName", _cppQualTypeName)
+			.expand();
 	}
-
-
 }
 
 void Type::codegenDefinition(std::ostream &out) const 
 {
 
 
-	StringTemplate newFunc = R"EOF(
+	static const StringTemplate newFunc = R"EOF(
 
 	struct {{structName}}
 	{
@@ -129,23 +123,19 @@ void Type::codegenDefinition(std::ostream &out) const
 	}
 	)EOF";
 
-	{
-		SimpleTemplateNamespace ns;
-		ns
-			.set("structName", _structName)
-			.setFunc("unpackTuple", [&](std::ostream &out) {
-				constructor().codegenTupleUnpack(out, 0);
-			})
-			.set("typeName", _cppQualTypeName)
-			.setFunc("callArgs", [&](std::ostream &out) {
-				constructor().codegenCallArgs(out, 0);
-			});
-
-		newFunc.expand(out, ns);
-	}
+	newFunc.into(out)
+		.set("structName", _structName)
+		.setFunc("unpackTuple", [&](std::ostream &out) {
+			constructor().codegenTupleUnpack(out, 0);
+		})
+		.set("typeName", _cppQualTypeName)
+		.setFunc("callArgs", [&](std::ostream &out) {
+			constructor().codegenCallArgs(out, 0);
+		})
+		.expand();
 
 
-	StringTemplate initDeallocTemplate = R"EOF(
+	static const StringTemplate initDeallocTemplate = R"EOF(
 
 	static int {{structName}}_init({{structName}} *self, PyObject *args, PyObject *kw)
 	{
@@ -160,19 +150,16 @@ void Type::codegenDefinition(std::ostream &out) const
 
 	)EOF";
 
-	{
-		SimpleTemplateNamespace ns;
-		ns
-			.set("structName", _structName)
-			.set("destructor", "~" + rsplit(_cppQualTypeName, "::").second);
-		initDeallocTemplate.expand(out, ns);
-	}
+	initDeallocTemplate.into(out)
+		.set("structName", _structName)
+		.set("destructor", "~" + rsplit(_cppQualTypeName, "::").second)
+		.expand();
 
 
 	for(const auto &method : _methods) method->codegenDefinition(out);
 
 
-	StringTemplate methodsTemplate = R"EOF(
+	static const StringTemplate methodsTemplate = R"EOF(
 
 	static PyMethodDef {{structName}}_methods[] = {
 		{{methodTable}}
@@ -186,45 +173,41 @@ void Type::codegenDefinition(std::ostream &out) const
 
 	)EOF";
 
+	std::map<std::string, Setter *> setters;
+	for(const auto &m : _methods)
 	{
-		SimpleTemplateNamespace ns;
-		std::map<std::string, Setter *> setters;
-		for(const auto &m : _methods)
+		if(auto setter = dynamic_cast<Setter *>(m.get()))
 		{
-			if(auto setter = dynamic_cast<Setter *>(m.get()))
-			{
-				setters[setter->pythonName()] = setter;
-			}
+			setters[setter->pythonName()] = setter;
 		}
-		ns
-			.set("structName", _structName)
-			.setFunc("methodTable", [&](std::ostream &out) {
-				for(const auto &method : _methods)
-				{
-					method->codegenMethodTable(out);
-				}
-			})
-			.setFunc("getSetTable", [&](std::ostream &out) {
-				for(auto getter : getters())
-				{
-					std::string setterName = "0";
-					auto it = setters.find(getter->pythonName());
-
-					if(it != setters.end())
-					{
-						setterName = it->second->implName();
-					}
-
-					out << boost::format("{(char *)\"%1%\", (getter)%2%, (setter)%4%, (char *)\"%3%\", 0},\n")
-						% getter->pythonName() % getter->implName() % processDocString(getter->docstring())
-						% setterName;
-				}
-			});
-
-		methodsTemplate.expand(out, ns);
 	}
+	methodsTemplate.into(out)
+		.set("structName", _structName)
+		.setFunc("methodTable", [&](std::ostream &out) {
+			for(const auto &method : _methods)
+			{
+				method->codegenMethodTable(out);
+			}
+		})
+		.setFunc("getSetTable", [&](std::ostream &out) {
+			for(auto getter : getters())
+			{
+				std::string setterName = "0";
+				auto it = setters.find(getter->pythonName());
 
-	const char *typeObjectFormatString = R"EOF(
+				if(it != setters.end())
+				{
+					setterName = it->second->implName();
+				}
+
+				out << boost::format("{(char *)\"%1%\", (getter)%2%, (setter)%4%, (char *)\"%3%\", 0},\n")
+					% getter->pythonName() % getter->implName() % processDocString(getter->docstring())
+					% setterName;
+			}
+		})
+		.expand();
+
+	static const StringTemplate typeObjectTemplate = R"EOF(
 	static PyTypeObject {{structName}}_Type = {
 		PyVarObject_HEAD_INIT(NULL, 0)                     
 		"{{moduleName}}.{{name}}",                                                    /* tp_name */
@@ -267,21 +250,20 @@ void Type::codegenDefinition(std::ostream &out) const
 	};
 	)EOF";
 
-	SimpleTemplateNamespace names;
-	names
+
+	typeObjectTemplate.into(out)
 		.set("structName", _structName)
 		.set("moduleName", _moduleName)
 		.set("name", name())
 		.set("cppName", _cppQualTypeName)
 		.set("typeName", _cppQualTypeName)
-		.set("docstring", processDocString(_docstring));
-
-	StringTemplate(typeObjectFormatString).expand(out, names);
+		.set("docstring", processDocString(_docstring))
+		.expand();
 
 
 	if(_copyAvailable)
 	{
-		const char *templateString = R"EOF(
+		static const StringTemplate conversionImplTemplate = R"EOF(
 		PyObject * python::Conversion<{{typeName}}>::dump(const {{typeName}} &obj)
 		{
 			PyTypeObject *ty = &{{structName}}_Type;
@@ -324,7 +306,16 @@ void Type::codegenDefinition(std::ostream &out) const
 		}
 		)EOF";
 
-		StringTemplate(templateString).expand(out, names);
+
+		conversionImplTemplate.into(out)
+			.set("structName", _structName)
+			.set("moduleName", _moduleName)
+			.set("name", name())
+			.set("cppName", _cppQualTypeName)
+			.set("typeName", _cppQualTypeName)
+			.expand();
+
+
 	}
 
 
