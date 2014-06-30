@@ -1,0 +1,54 @@
+
+// This file contains the customizations made to Bootstrap for documentation. 
+// It is not automatically converted to CSS as part of the build process.
+
+
+// customize bootstrap variables here:
+$font-family-sans-serif: "fira_sans";
+$font-family-monospace: "fira_mono";
+tt {
+    font-family: $font-family-monospace;
+}
+
+body {
+    text-rendering: optimizeLegibility;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+.class, .enum {
+    @extend .panel;
+    @extend .panel-default;
+
+    > dt {
+        @extend .panel-heading;
+    }
+
+    > dd {
+        @extend .panel-body;
+    }
+}
+
+
+
+
+//$grid-float-breakpoint: 992px;
+
+//$screen-md: 800px;
+//$container-desktop: 800px;
+//$navbar-collapse-max-height: 55px;
+//$grid-gutter-width: 15px;
+$code-color: #000;
+$code-bg: #eee;
+@import "variables";
+$alert-warning-text: $text-color;
+$alert-info-text: $text-color;
+$alert-danger-text: $text-color;
+$alert-success-text: $text-color;
+@import "bootstrap";
+
+
+

@@ -27,3 +27,6 @@ ui_*
 *.bind.*
 *.so
 .stemdir.yaml
+*.doctree
+*.pickle
+build
