@@ -77,6 +77,7 @@ public:
 
 	typename StreamT::reference_type operator *() const
 	{
+		assert(_range);
 		return _range->front();
 	}
 
