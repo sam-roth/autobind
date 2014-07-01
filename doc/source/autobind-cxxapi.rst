@@ -97,6 +97,7 @@ Annotations
         };
 
 
+
     
 
 Client-Specializable Templates
@@ -148,6 +149,10 @@ Client-Specializable Templates
 
     Specialize these class templates to implement the :py:meth:`~object.__str__` and
     :py:meth:`~object.__repr__` protocols, respectively.
+
+    There is also an additional second template parameter, ``Enable``, (void
+    by default), which you may use with :cpp:class:`std::enable_if\<>`. 
+
 
     .. cpp:function:: static std::string convert(const T &)
 
@@ -219,7 +224,7 @@ Python Objects
 
     .. cpp:function:: const char *what() const noexcept
 
-        Always returns ``"<python exception>"`` for now. Eventually, I hope to
+        Always returns ``"<python exception>"`` for now. I plan to
         wire this up to show the :py:func:`repr` of the Python exception.
 
 .. s*
@@ -227,10 +232,10 @@ Python Objects
 .. cpp:class:: python::Handle<T>
 
     :cpp:class:`Handle\<T>` is a non-nullable smart pointer for C++ types stored within
-    a PyObject. It uses a combnation of :cpp:class:`std::shared_ptr\<>` and Python reference
+    a PyObject. It uses a combination of :cpp:class:`std::shared_ptr\<>` and Python reference
     counting to ensure that the object is only disposed once all references have gone out of
     scope.
-
+    
     :static assertions: 
         * ``!std::is_reference<T>::value``
         * ``std::is_reference<typename ConversionLoadResult<T>::type>::value``

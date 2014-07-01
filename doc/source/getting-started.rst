@@ -102,7 +102,7 @@ The ``pymodule()`` directive instructs Autobind that the module's name is ``hell
     Python/C module and not just those produced by Autobind.
     
 
-Next comes the, uh well, *easy* part. Open up a terminal and type::
+Next comes the easy part. Open up a terminal and type::
     
     $ /path/to/autobind/scripts/autobind.py build -c hello.cpp
 

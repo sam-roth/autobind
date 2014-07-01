@@ -1,0 +1,26 @@
+{% extends "!navbar.html" %}
+
+{% block navbarsearch %}
+    {%- if pagename != "search" %}
+        <form class="navbar-form navbar-left" action="{{ pathto('search') }}" method="get">
+            <div class="form-group">
+                <input type="text" name="q" class="form-control" placeholder="Search" />
+            </div>
+            <input type="hidden" name="check_keywords" value="yes" />
+            <input type="hidden" name="area" value="default" />
+        </form>
+    {%- endif %}
+    <div class="navbar-right" style="padding-left: 5px;">
+            <!--<button  class="btn btn-primary navbar-btn"
+                style="text-shadow: none;">-->
+                <a class="btn btn-primary navbar-btn" href="https://bitbucket.org/saroth/autobind" >
+                    <i class="fa fa-bitbucket"></i>&nbsp;
+                    Clone
+                </a>
+                <!--</button>-->
+    </div>
+{% endblock %}
+{% block navbarextra %}
+{% endblock %}
+
+

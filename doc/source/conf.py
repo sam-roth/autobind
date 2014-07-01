@@ -36,7 +36,6 @@ from sphinx.domains import cpp as cppdomain
 extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
-    'breathe'
 ]
 
 breathe_projects = {
@@ -115,15 +114,15 @@ html_theme = 'bootstrap'
 html_sidebars = {
     '**': [
         'localtoc.html',
-        'sourcelink.html',
-        'searchbox.html'
+#         'sourcelink.html',
+        'searchbox.html',
     ]
 }
 
 html_theme_options = {
     # Navigation bar title. (Default: ``project`` value)
     'navbar_title': "Autobind",
-
+    
     # Tab name for entire site. (Default: "Site")
     'navbar_site_name': "Site",
 # 
@@ -135,6 +134,8 @@ html_theme_options = {
 #     # Note the "1" or "True" value above as the third argument to indicate
 #     # an arbitrary url.
     'navbar_links': [
+#                      ('<i class="fa fa-bitbucket fa-fw"></i>&nbsp;Clone on Bitbucket',
+#                       'https://bitbucket.org/saroth/autobind', True)
 #         ("Examples", "examples"),
 #           ('Module Index', 'py-modindex'),
 #         ("Link", "http://example.com", True),
@@ -169,7 +170,7 @@ html_theme_options = {
 
     # Location of link to source.
     # Options are "nav" (default), "footer" or anything else to exclude.
-    'source_link_position': "nav",
+    'source_link_position': "footer",
 
     # Bootswatch (http://bootswatch.com/) theme.
     #
