@@ -17,7 +17,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "lib")
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR})
-find_package(Boost COMPONENTS system regex)
+find_package(Boost COMPONENTS regex)
 find_package(LLVM REQUIRED)
 find_package(Clang REQUIRED)
 
