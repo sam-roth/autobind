@@ -3,9 +3,6 @@ cmake_minimum_required(VERSION 2.6)
 project(autobind)
 
 include(PrecompiledHeader.cmake)
-include(CMakeLists.user.cmake OPTIONAL)
-
-
 
 # -fvisibility-inlines-hidden: fixes linker warnings about symbol visibility when linking with Clang
 # -Wno-deprecated-register: suppress warnings caused by Boost.Regex
@@ -17,13 +14,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "lib")
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR})
+
+include(CMakeLists.user.cmake OPTIONAL)
+
 find_package(Boost COMPONENTS regex)
 find_package(LLVM REQUIRED)
 find_package(Clang REQUIRED)
 
 
 link_directories(${LLVM_LIB_DIR})
-message("CLANG LIBS: ${CLANG_LIBS}")
 
 include_directories(
 	${Boost_INCLUDE_DIR}
