@@ -3,9 +3,8 @@ cmake_minimum_required(VERSION 2.6)
 project(autobind)
 
 include(PrecompiledHeader.cmake)
+include(CMakeLists.user.cmake OPTIONAL)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(LLVM_CONFIG_EXECUTABLE "/opt/local/bin/llvm-config-mp-3.3")
 
 
 # -fvisibility-inlines-hidden: fixes linker warnings about symbol visibility when linking with Clang
@@ -49,7 +48,6 @@ target_link_libraries(
 	autobind_core
 	${Boost_LIBRARIES}
 	${CLANG_LIBS}
-	${QT_LIBRARIES}
 	${LLVM_LIBS_CORE}
 )
 
