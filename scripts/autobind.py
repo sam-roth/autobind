@@ -79,7 +79,7 @@ def get_python_ldflags():
 
 def get_autobind_flags(source):
 
-    return get_cc1_flags(CXXFLAGS + get_python_cflags()
+    return get_cc1_flags(CXXFLAGS + get_python_cflags() + ['-DAUTOBIND_RUN']
                          + ['-c', source])
 
 
@@ -95,7 +95,7 @@ def run_autobind(source):
 
 
 
-
+        
 
 def main():
 
