@@ -1,5 +1,10 @@
-#pragma once
+// Copyright (c) 2014, Samuel A. Roth. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can
+// be found in the COPYING file.
 
+#ifndef AUTOBIND_HPP_X4U6E9
+#define AUTOBIND_HPP_X4U6E9
 
 #include <Python.h>
 
@@ -33,6 +38,9 @@
 
 namespace python
 {
+
+	using autobind::Optional;
+
 	template <class T, class Enable=void>
 	struct Conversion
 	{
@@ -114,9 +122,6 @@ namespace python
 			template <class T>
 			class HasStr: public HasMember<T, CheckHasStr> { };
 
-
-
-
 			struct CheckHasPythonTypeName
 			{
 				template <class T, const char *(*)() = &T::pythonTypeName>
@@ -134,17 +139,9 @@ namespace python
 					return typeid(T).name();
 				}
 			};
-// 
-// 			template <class T>
-// 			class PythonTypeName<T,
 		}
-//
-// 		template <class T>
-// 		const char *pythonTypeName()
-// 		{
-// 
-// 		}
-// 
+
+
 		template <class T, class Enable=void>
 		struct Str: public detail::UnimplTag
 		{
@@ -303,14 +300,6 @@ namespace python
 		return std::shared_ptr<PyObject>(Py_None, disposePyObject);
 	}
 
-
-	inline bool isinstance(PyObject &obj, PyObject &ty)
-	{
-		return PyObject_IsInstance(&obj, &ty);
-	}
-
-
-
 	class Exception: public std::exception
 	{
 	public:
@@ -357,49 +346,7 @@ namespace python
 		return IteratorRef(obj);
 	}
 
-	class ListRef
-	{
-		std::shared_ptr<PyObject> _obj;
-	public:
-		ListRef(std::shared_ptr<PyObject> p)
-		: _obj(p) { }
-
-
-		size_t size() const
-		{
-			auto res = PySequence_Size(_obj.get());
-			if(res < 0)
-			{
-				throw Exception();
-			}
-
-			return res;
-		}
-
-		template <class T>
-		void set(size_t index, const T &value)
-		{
-			if(PySequence_SetItem(_obj.get(), index, Conversion<T>::dump(value)) == -1)
-			{
-				throw Exception();
-			}
-		}
-
-		template <class T>
-		T get(size_t index) const
-		{
-			return Conversion<T>::load(PySequence_GetItem(_obj.get(), index));
-		}
-
-		template <class T>
-		void append(const T &item)
-		{
-			if(PyList_Append(_obj.get(), Conversion<T>::dump(item)))
-			{
-				throw python::Exception();
-			}
-		}
-	};
+	class ListRef;
 
 	class ObjectRef
 	{
@@ -410,6 +357,12 @@ namespace python
 
 		ObjectRef()
 		: _obj(getNone()) { } // for STL containers
+
+		template <class T>
+		static ObjectRef create(const T &value)
+		{
+			return ObjectRef(borrow(Conversion<T>::dump(value)));
+		}
 
 		static ObjectRef none()
 		{
@@ -447,13 +400,81 @@ namespace python
 		{
 			return _obj;
 		}
+
+		operator PyObject *() const
+		{
+			return _obj.get();
+		}
+
+		template <class T>
+		typename ConversionLoadResult<T>::type convert() const
+		{
+			return Conversion<T>::load(*this);
+		}
+
+		template <class T>
+		Optional<typename ConversionLoadResult<T>::type> tryConverting() const
+		{
+			return this->convert<Optional<T>>();
+		}
+
+		ListRef asList() const;
 	};
+
+	class ListRef: public ObjectRef
+	{
+	public:
+		using ObjectRef::ObjectRef;
+
+		ListRef(const ObjectRef &other)
+		: ObjectRef(other) { }
+
+		size_t size() const
+		{
+			auto res = PySequence_Size(*this);
+			if(res < 0)
+			{
+				throw Exception();
+			}
+
+			return res;
+		}
+
+		template <class T>
+		void set(size_t index, const T &value)
+		{
+			if(PySequence_SetItem(*this, index, Conversion<T>::dump(value)) == -1)
+			{
+				throw Exception();
+			}
+		}
+
+		template <class T>
+		T get(size_t index) const
+		{
+			return Conversion<T>::load(PySequence_GetItem(*this, index));
+		}
+
+		template <class T>
+		void append(const T &item)
+		{
+			if(PyList_Append(*this, Conversion<T>::dump(item)))
+			{
+				throw python::Exception();
+			}
+		}
+	};
+
+	inline ListRef ObjectRef::asList() const
+	{
+		return ListRef(*this);
+	}
 
 	template <class T>
 	class Handle
 	{
 		static_assert(!std::is_reference<T>::value,
-		              "Handle<T>: T should not be a reference.");
+		              "Handle<T>: T should not be a reference. Handles always hold references.");
 
 		static_assert(std::is_reference<typename ConversionLoadResult<T>::type>::value,
 		              "Handle<T> may only be used with types for which python::Conversion<T> returns "
@@ -487,8 +508,20 @@ namespace python
 		{
 			return _ref;
 		}
-	};
 
+		template <class U, class=typename std::enable_if<std::is_same<U, bool>::value>::type>
+		operator U() const
+		{
+			static_assert(!std::is_same<U, U>::value,
+			              "Handles are non-nullable. Delete this null check.");
+		}
+
+		const ObjectRef &asObject() const
+		{
+			return _obj;
+		}
+	};
+	
 	template <class T>
 	struct Conversion<python::Handle<T>>
 	{
@@ -623,24 +656,57 @@ namespace python
 	};
 
 
-	template <class T>
-	autobind::Optional<typename ConversionLoadResult<T>::type> 
-	tryConverting(PyObject *obj)
+
+	template <class T, class Enable>
+	struct Conversion<Optional<T>, Enable>
 	{
-		try
+	private:
+		typedef typename std::remove_reference<T>::type U;
+	public:
+		static Optional<typename ConversionLoadResult<U>::type>
+		load(PyObject *obj)
 		{
-			return Conversion<T>::load(obj);
-		}
-		catch(Exception &)
-		{
-			PyErr_Clear();
-		}
-		catch(std::runtime_error &)
-		{
+			try
+			{
+				return Conversion<U>::load(obj);
+			}
+			catch(Exception &)
+			{
+				PyErr_Clear();
+			}
+			catch(std::runtime_error &)
+			{
+			}
+
+			return {};
 		}
 
-		return {};
+		template <class U>
+		static PyObject *dump(const Optional<U> &obj)
+		{
+			static_assert(std::is_convertible<U, T>::value,
+			              "Converter not compatible with this type");
+
+			if(!obj)
+			{
+				Py_RETURN_NONE;
+			}
+			else
+			{
+				return Conversion<T>::dump(*obj);
+			}
+		}
+	};
+
+
+
+	template <class T>
+	Optional<typename ConversionLoadResult<T>::type> 
+	tryConverting(PyObject *obj)
+	{
+		return Conversion<Optional<typename ConversionLoadResult<T>::type>>::load(obj);
 	}
+
 
 	namespace detail
 	{
@@ -726,3 +792,4 @@ namespace python
 	}
 
 }
+#endif // AUTOBIND_HPP_X4U6E9
