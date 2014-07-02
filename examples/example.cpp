@@ -1,17 +1,17 @@
 
 
 #include "autobind.hpp"
-#include <boost/format.hpp>
 #include <map>
 
 pymodule     (example);
 pydocstring  ("example functions to be consumed by python");
-// 
-// pyexport void kwarg_parrot(std::string p) 
-// {
-// 	std::cout << "kwarg_parrot(" << p << ")\n";
-// }
-// 
+
+/// Print a lovely skit to standard output.
+///
+/// Keyword argument example from Python docs:
+/// https://docs.python.org/3.3/extending/extending.html
+///
+/// Default arguments aren't supported yet.
 pyexport void kwarg_parrot(int voltage,
                            const char *state,
                            const char *action,
@@ -44,6 +44,7 @@ private:
 	void test2() { }
 };
 
+/// A homogenous, sorted dictionary mapping str -> str.
 struct pyexport StringMap
 {
 	std::map<std::string, std::string> m;
@@ -120,18 +121,22 @@ pyexport std::vector<int> doubled(const std::vector<int> &ints)
 	return v;
 }
 
-
+// declare a getter/setter pair
 #define ACCESSORS(f) \
 	pygetter(f) decltype(_##f) get_ ## f() const { return _##f; }\
 	void pysetter(f) set_ ## f(decltype(_##f) value) { _##f = value; }
 
+
+/// Noddy example from the Python documentation:
+/// https://docs.python.org/3.3/extending/newtypes.html
 class pyexport Noddy
 {
 	std::string _first, _last;
 	int _number;
 
 public:
-	ACCESSORS(number)
+	ACCESSORS(number) // Because Autobind is compiler-based, it can see straight through macros
+	                  // and decltype.
 	ACCESSORS(first)
 	ACCESSORS(last)
 
