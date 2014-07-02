@@ -6,9 +6,9 @@
 #include <memory>
 #include <vector>
 #include <typeinfo>
-#include <boost/regex.hpp>
 #include "streamindent.hpp"
 #include "util.hpp"
+#include "regex.hpp"
 
 namespace autobind {
 
@@ -93,8 +93,8 @@ struct ITemplateNamespace
 };
 
 namespace {
-	boost::regex templateRegex("\\{\\{(.*?)\\}\\}",
-	                           boost::regex::ECMAScript);
+	std::regex templateRegex("\\{\\{(.*?)\\}\\}",
+	                         std::regex::ECMAScript);
 }
 /// @deprecated This class is unsafe to use because you must manually ensure that objects passed
 ///   to set() outlive the namespace.
@@ -185,7 +185,7 @@ public:
 	void expand(std::ostream &os, const ITemplateNamespace &ns) const
 	{
 
-		auto replacer = [&](const boost::smatch &m) {
+		auto replacer = [&](const std::smatch &m) {
 
 			bool needsIndent = true;
 			int index = m.position() - 1;
@@ -219,9 +219,9 @@ public:
 			return ss.str();
 		};
 
-		auto s = boost::regex_replace(_fmt,
-		                              templateRegex,
-		                              replacer);
+		auto s = regex_replace(_fmt,
+		                       templateRegex,
+		                       replacer);
 
 
 		os << s;

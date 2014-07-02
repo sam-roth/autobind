@@ -17,7 +17,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR})
 
 include(CMakeLists.user.cmake OPTIONAL)
 
-find_package(Boost COMPONENTS regex)
+find_package(Boost)
 find_package(LLVM REQUIRED)
 find_package(Clang REQUIRED)
 
@@ -34,7 +34,7 @@ include_directories(
 add_library(
 	autobind_core
 	SHARED
-	
+
 	src/Function.cpp
 	src/DiscoveryVisitor.cpp
 	src/Type.cpp
@@ -45,7 +45,7 @@ add_library(
 
 target_link_libraries(
 	autobind_core
-	${Boost_LIBRARIES}
+# 	${Boost_LIBRARIES}
 	${CLANG_LIBS}
 	${LLVM_LIBS_CORE}
 )
