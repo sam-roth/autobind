@@ -16,11 +16,39 @@ Building Autobind
 
 :you'll need:
     • CMake
-    • Clang ≥ 3.3 (with headers)
-    • Boost (headers and Boost.Regex)
+    • Clang ≥ 3.4 (with headers)
+    • LLVM libc++
+    • Boost (headers only)
     • Python ≥ 3.3 (for running the wrapper script)
 
 .. highlight:: console
+
+If Clang is not your default compiler you must set the CXX environment variable
+to your Clang binary.
+
+.. note::
+
+    A note and apology to GNU users:
+
+    First, you may be able to use GCC 4.9 to build autobind, but I haven't
+    tested this. The alternative is somewhat more complicated. (I haven't had
+    time to test this either, but I think that it may work.)
+
+    Clang itself must be built using libc++ (rather than libstdc++) or
+    you will receive errors upon trying to link. If you do, download the Clang and
+    LLVM sources, configure them to be built using an existing Clang and libc++,
+    then build Clang and LLVM. Finally, when attempting to rebuild autobind, make
+    sure these libraries are the ones the autobind finds during its configuration
+    process. You may need to alter the CMake variables manually. Consult the CMake
+    manual.
+
+    Yes, this process involves three compilers and two standard libraries. I'm
+    sorry. There's nothing to be done about this, besides rewrite the parts of the
+    codebase that use C++1y. which is what I will be doing over the next few days.
+
+    For the time being, if you have a Mac or a recent FreeBSD system (both LLVM-based),
+    consider using that instead.
+
 
 Once you've installed the dependencies, just do::
 
@@ -29,8 +57,12 @@ Once you've installed the dependencies, just do::
     $ cmake .
     $ make -j4
 
+If you get errors about ``auto`` not being valid in function declarations,
+there is likely a problem with your compiler. Please see the note above.
+
 If it doesn't work, you found a bug, either in the program or the
-documentation. Please file a bug report [#]_.
+documentation. Please file a bug report [#bugs]_.
+
 
 Using the Wrapper Script
 ------------------------
@@ -127,7 +159,8 @@ Then, open up a Python3 shell and type::
 
 .. rubric:: Footnotes
 
-.. [#]  Although I would prefer if you didn't file duplicate bug reports, don't
+
+.. [#bugs]  Although I would prefer if you didn't file duplicate bug reports, don't
         feel like you need to exhaustively examine every bug report before submitting
         one. 
 .. [#macro-hygiene]  
@@ -140,3 +173,4 @@ Then, open up a Python3 shell and type::
     obvious to those who are not familiar with Autobind. They are lowercase to 
     make them easier to type, and to avoid collisions with Python/C API functions
     and macros, which all begin with ``Py*``.
+
