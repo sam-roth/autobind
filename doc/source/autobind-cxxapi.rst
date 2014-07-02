@@ -212,6 +212,48 @@ Python Objects
 
      Get the shared_ptr<PyObject> that backs this :cpp:class:`ObjectRef`.
 
+ .. cpp:function:: operator PyObject *() const
+
+    Equivalent to ``this->pyObject().get()``.
+
+
+ .. cpp:function::  convert<T>() const
+    
+    Convert this :cpp:class:`ObjectRef` to type `T` using :cpp:class:`python::Conversion\<T>`.
+
+    :return type: The return type of :cpp:func:`python::Conversion\<T>::load`.
+
+ .. cpp:function:: tryConverting<T>() const
+    
+    Equivalent to ``this->convert<Optional<T>>()``.
+
+ .. cpp:function:: ListRef asList() const
+
+    Equivalent to ``ListRef(*this)``
+
+.. a*
+
+.. cpp:class:: python::ListRef: public python::ObjectRef
+    
+    Holds a reference to a Python sequence, such as a :py:class:`list`.
+
+    .. cpp:function:: size_t size() const
+
+        Equivalent to the Python function :py:func:`len`.
+        
+    .. cpp:function:: void set<T>(size_t index, const T &value)
+
+        Sets the item at `index` to `value`.
+
+    .. cpp:function:: T get<T>(size_t index)
+
+        Returns the value at `index`.
+
+    .. cpp:function:: void append<T>(const T &item)
+
+        Equivalent to :py:func:`list.append`.
+    
+
 .. cpp:class:: python::Exception: public std::exception
     
     This exception is thrown when an Autobind API catches a Python exception.
@@ -226,6 +268,8 @@ Python Objects
 
         Always returns ``"<python exception>"`` for now. I plan to
         wire this up to show the :py:func:`repr` of the Python exception.
+
+ 
 
 .. s*
 
@@ -328,8 +372,10 @@ Generic Utilities
 
 
 
-.. index:: autobind::makeOptional<T, Args...> (C++ function)
-.. cpp:function:: autobind::Optional<T> autobind::makeOptional<T, Args...>(Args &&... args)
+.. .. index:: autobind::makeOptional<T, Args...> (C++ function)
+.. .. cpp:function:: autobind::Optional<T> autobind::makeOptional<T, Args...>(Args &&... args)
+
+.. cpp:function:: autobind::Optional<T> autobind::makeOptional<T, ...>(...)
 
         Create a new :cpp:class:`Optional\<T>`, initialized in place by forwarding the
         arguments provided to T's constructor.
@@ -337,8 +383,8 @@ Generic Utilities
         
         .. tip::
             
-            Your C++ compiler will automatically infer the ``Args...`` template parameter.
-            You should buy it a beer.
+            Your C++ compiler will automatically infer the ``Args...`` template parameter
+            (which appears as ``...`` above for technical reasons). You should buy it a beer.
 
 
 

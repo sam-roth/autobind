@@ -7,3 +7,7 @@ dl.class, dl.enum {
 }
 
 */
+
+.visible {
+    visibility: visible !important;
+}

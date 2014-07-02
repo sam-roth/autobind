@@ -36,6 +36,7 @@ from sphinx.domains import cpp as cppdomain
 extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
+    'IPython.sphinxext.ipython_console_highlighting'
 ]
 
 breathe_projects = {
@@ -112,6 +113,7 @@ modindex_common_prefix = ['autobind', 'python', 'AB_', 'py']
 # a list of builtin themes.
 html_theme = 'bootstrap'
 html_sidebars = {
+    'index': [],
     '**': [
         'localtoc.html',
 #         'sourcelink.html',
@@ -122,7 +124,7 @@ html_sidebars = {
 html_theme_options = {
     # Navigation bar title. (Default: ``project`` value)
     'navbar_title': "Autobind",
-    
+
     # Tab name for entire site. (Default: "Site")
     'navbar_site_name': "Site",
 # 
@@ -363,4 +365,4 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/3.4': None}
+intersphinx_mapping = {'python': ('http://docs.python.org/3.4', None)}

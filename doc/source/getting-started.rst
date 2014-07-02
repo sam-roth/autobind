@@ -1,23 +1,31 @@
 
+===============
 Getting Started
 ===============
 
-The bad news: Writing bindings for a native-code module is boring, mechanical,
-and error-prone.
-
-The good news: Writing bindings for a native-code module is mechanical. Why not
-let your computer do the work for you?
-
 Building Autobind
 -----------------
+
+.. raw:: html
+    
+    <div class="pull-right">
+        <a class="btn btn-primary" href="https://bitbucket.org/saroth/autobind/downloads">
+            <i class="fa fa-download"></i>&nbsp;Get the Source
+        </a>
+    </div>
+
 :you'll need:
     • CMake
     • Clang ≥ 3.3 (with headers)
     • Boost (headers and Boost.Regex)
     • Python ≥ 3.3 (for running the wrapper script)
 
+.. highlight:: console
+
 Once you've installed the dependencies, just do::
 
+    $ hg clone https://saroth@bitbucket.org/saroth/autobind
+    $ cd autobind
     $ cmake .
     $ make -j4
 
@@ -99,19 +107,20 @@ The ``pymodule()`` directive instructs Autobind that the module's name is ``hell
     The name of the module, as declared with ``pymodule()`` must match the name
     of the dynamic library, sans extension, exactly. Using the wrong module
     name will make it impossible to load your module. This is true of all
-    Python/C module and not just those produced by Autobind.
+    Python/C modules and not just those produced by Autobind.
     
 
 Next comes the easy part. Open up a terminal and type::
     
     $ /path/to/autobind/scripts/autobind.py build -c hello.cpp
 
-.. highlight:: python
+.. highlight:: ipython
 
 Then, open up a Python3 shell and type::
     
-    >>> import hello
-    >>> hello.hello_world()
+
+    In [1]: import hello
+    In [2]: hello.hello_world()
     Hello, world!
 
 

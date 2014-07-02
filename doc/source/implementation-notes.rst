@@ -51,7 +51,26 @@ module to extract the interface of all suitably-annotated bindable names.
 .. ^^^^^^^^^^^^^^^
 
 
+Other Notes
+-----------
 
+Why not use the C++ ``extern`` keyword, as in ``extern "Python"``?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This is actually what I wanted to do, but it seems that doing this would have required 
+modifying the Clang parser to preserve this information, rather than discarding it as an
+invalid linkage type. It also would have made it necessary to strip the annotations from
+the source code before passing them to the actual compiler, since Clang will emit an
+error on an unknown ``extern`` linkage type::
+
+    a.cpp:2:8: error: unknown linkage language
+    extern "Python" void foo() { }
+           ^
+
+As will GCC::
+
+    a.cpp:2:8: error: language string '"Python"' not recognized
+     extern "Python" void foo() { }
+            ^
 
 .. rubric:: Footnotes
 
