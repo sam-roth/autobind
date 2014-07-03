@@ -26,12 +26,10 @@ public:
 		}
 	}
 
-	auto moduleStream() const
-	{
-		return streams::stream(_modules);
-	}
+	AB_RETURN_AUTO(moduleStream() const,
+	               streams::stream(_modules));
 
-	
+
 	void codegen(std::ostream &out) const
 	{
 		for(const auto &item : _modules)

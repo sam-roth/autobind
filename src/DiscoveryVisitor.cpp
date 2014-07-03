@@ -37,17 +37,15 @@ std::string prototypeSpelling(clang::FunctionDecl *decl)
 }
 
 
-auto attributeStream(clang::Decl &x)
-{
-	return streams::stream(x.specific_attr_begin<clang::AnnotateAttr>(),
-	                       x.specific_attr_end<clang::AnnotateAttr>());
-}
+AB_RETURN_AUTO(attributeStream(clang::Decl &x),
+               streams::stream(x.specific_attr_begin<clang::AnnotateAttr>(),
+                               x.specific_attr_end<clang::AnnotateAttr>()))
 
 bool isPyExport(clang::Decl *d)
 {
 	using namespace streams;
 
-	auto pred = [](auto a) { return a->getAnnotation() == "pyexport"; };
+	auto pred = [](const clang::AnnotateAttr *a) { return a->getAnnotation() == "pyexport"; };
 	return any(attributeStream(*d) | transformed(pred));
 }
 
@@ -55,11 +53,12 @@ bool isPyNoExport(clang::Decl *d)
 {
 	using namespace streams;
 
-	auto pred = [](auto a) { return a->getAnnotation() == "pynoexport"; };
+	auto pred = [](const clang::AnnotateAttr *a) { return a->getAnnotation() == "pynoexport"; };
 	return any(attributeStream(*d) | transformed(pred));
 }
 
-auto errorToDiag = [](auto decl, const auto &func) {
+template <class Decl, class Func>
+bool errorToDiag(Decl decl, const Func &func) {
 	try
 	{
 		func();
@@ -197,8 +196,8 @@ public:
 			}
 		}
 
-		auto ty = std::make_unique<Type>(unqualName, name, docstring);
-		
+		auto ty = ::autobind::make_unique<Type>(unqualName, name, docstring);
+
 
 		bool foundConstructor = false;
 
@@ -338,7 +337,7 @@ public:
 		using namespace streams;
 
 		auto stream = attributeStream(*decl)
-			| filtered([](auto a) { return a->getAnnotation().startswith("py:module:"); });
+			| filtered([](const clang::AnnotateAttr *a) { return a->getAnnotation().startswith("py:module:"); });
 
 
 		if(!stream.empty())
@@ -361,8 +360,8 @@ public:
 		}
 
 		auto docstringStream = attributeStream(*decl)
-			| filtered([](auto a) { return a->getAnnotation().startswith("pydocstring:"); });
-
+			| filtered([](const clang::AnnotateAttr *a) { return a->getAnnotation().startswith("pydocstring:"); });
+			
 		if(!docstringStream.empty())
 		{
 			auto ann = docstringStream.front()->getAnnotation();

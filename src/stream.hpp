@@ -203,7 +203,7 @@ class TransformStream<
 	>::type
 >
 : public Stream<
-	const RESULT_TYPE,
+	typename std::add_const<RESULT_TYPE>::type,
 	TransformStream<SourceStream, Transform>
 >
 {
@@ -230,7 +230,7 @@ public:
 		return _source.empty();
 	}
 
-	const Result &front() const
+	typename std::add_const<Result &>::type front() const
 	{
 		return *_result;
 	}

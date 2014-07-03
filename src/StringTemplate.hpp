@@ -93,8 +93,8 @@ struct ITemplateNamespace
 };
 
 namespace {
-	std::regex templateRegex("\\{\\{(.*?)\\}\\}",
-	                         std::regex::ECMAScript);
+	regex::regex templateRegex("\\{\\{(.*?)\\}\\}",
+	                           regex::regex::ECMAScript);
 }
 /// @deprecated This class is unsafe to use because you must manually ensure that objects passed
 ///   to set() outlive the namespace.

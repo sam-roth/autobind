@@ -115,7 +115,7 @@ void Setter::codegenDefinition(std::ostream &out) const
 	template_.into(out)
 		.set("implName", implName())
 		.set("selfTypeName", selfTypeName())
-		.setFunc("tupleUnpack", [&](auto &out) { 
+		.setFunc("tupleUnpack", [&](std::ostream &out) { 
 			codegenTupleUnpack(out, 0);
 		})
 		.set("name", name())

@@ -5,7 +5,7 @@
 
 #include "util.hpp"
 #include "stream.hpp"
-#include <regex>
+#include "regex.hpp"
 #include <boost/algorithm/string.hpp>
 #include <unordered_map>
 
@@ -15,8 +15,8 @@ std::unordered_map<std::string, size_t> gensyms;
 
 inline std::string symbolify(const std::string &name)
 {
-	static const std::regex pat(R"([^A-Za-z0-9]+)");
-	return std::regex_replace(name, pat, "_");
+	static const regex::regex pat(R"([^A-Za-z0-9]+)");
+	return regex::regex_replace(name, pat, std::string("_"));
 }
 
 std::string gensym(const std::string &prefixUnsymbolified)

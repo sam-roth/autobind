@@ -5,20 +5,58 @@
 
 #ifndef REGEX_HPP_CKX3T4
 #define REGEX_HPP_CKX3T4
-#include <regex>
+
+#ifdef AB_NO_STD_REGEX // for GCC 4.8, which doesn't have std::regex.
+#	include <boost/tr1/regex.hpp>
+#else
+#	include <regex>
+#endif // AB_NO_STD_REGEX
+
 #include <string>
 
 
 namespace autobind
 {
-
+	#ifdef AB_NO_STD_REGEX
+	namespace regex
+	{
+		namespace regex_constants = std::tr1::regex_constants;
+		using std::tr1::regex_error;
+		using std::tr1::regex_traits;
+		using std::tr1::basic_regex;
+		using std::tr1::sub_match;
+		using std::tr1::match_results;
+		using std::tr1::regex_match;
+		using std::tr1::regex_search;
+		using std::tr1::regex_replace;
+		using std::tr1::regex_iterator;
+		using std::tr1::regex_token_iterator;
+		using std::tr1::regex;
+	}
+	#else
+	namespace regex
+	{
+		namespace regex_constants = std::regex_constants;
+		using std::regex_error;
+		using std::regex_traits;
+		using std::basic_regex;
+		using std::sub_match;
+		using std::match_results;
+		using std::regex_match;
+		using std::regex_search;
+		using std::regex_replace;
+		using std::regex_iterator;
+		using std::regex_token_iterator;
+		using std::regex;
+	}
+	#endif
 template <class Func>
 std::string regex_replace(const std::string &s,
                           const std::regex &pattern,
                           Func f)
 {
 	typedef std::string::const_iterator It;
-	typedef std::regex_iterator<It> RegexIt;
+	typedef regex::regex_iterator<It> RegexIt;
 
 	auto it = RegexIt(s.begin(), s.end(), pattern);
 	auto end = RegexIt();

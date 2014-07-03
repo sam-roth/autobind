@@ -29,13 +29,13 @@ public:
 			existingExport.swap(e);
 		}
 	}
+
+
+	AB_RETURN_AUTO(exports() const,
+	               streams::stream(_exports)
+	               | streams::values
+	               | streams::transformed(streams::removeSmartPointer));
 	
-	auto exports() const
-	{
-		return streams::stream(_exports)
-			| streams::values
-			| streams::transformed(streams::removeSmartPointer);
-	}
 
 	const std::string &name() const
 	{

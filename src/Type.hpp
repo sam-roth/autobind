@@ -30,11 +30,9 @@ public:
 	virtual void setModule(Module &m) override;
 	virtual void codegenInit(std::ostream &) const override;
 
-	auto getters() const
-	{
-		using namespace streams;
-		return stream(_methods) | dynamicCasted<Getter>();
-	}
+	AB_RETURN_AUTO(getters() const,
+	               streams::stream(_methods)
+	               | streams::dynamicCasted<Getter>());
 };
 
 

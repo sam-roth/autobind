@@ -7,7 +7,9 @@ include(PrecompiledHeader.cmake)
 # -fvisibility-inlines-hidden: fixes linker warnings about symbol visibility when linking with Clang
 # -Wno-deprecated-register: suppress warnings caused by Boost.Regex
 
-set(CMAKE_CXX_FLAGS "-g -std=c++1y -stdlib=libc++ -O0 -Wall -D__STDC_CONSTANT_MACROS")
+
+set(STDLIB_FLAG "-stdlib=libc++")
+set(CMAKE_CXX_FLAGS "-g -std=c++11 -O0 -Wall -D__STDC_CONSTANT_MACROS")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__STDC_LIMIT_MACROS -fvisibility-inlines-hidden -Wno-deprecated-register")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "bin")
@@ -16,6 +18,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "lib")
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR})
 
 include(CMakeLists.user.cmake OPTIONAL)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STDLIB_FLAG}")
 
 find_package(Boost)
 find_package(LLVM REQUIRED)

@@ -25,8 +25,8 @@ namespace
 
 std::string processDocString(const std::string &docstring)
 {
-	auto result = std::regex_replace(docstring, std::regex("(^|\n+)\\s*(///|\\*)"), "$1");
-	result = std::regex_replace(result, std::regex("(^|\n+)\\s+"), "$1");
+	auto result = regex::regex_replace(docstring, regex::regex("(^|\n+)\\s*(///|\\*)"), std::string("$1"));
+	result = regex::regex_replace(result, regex::regex("(^|\n+)\\s+"), std::string("$1"));
 	replace(result, "\\", "\\\\");
 	replace(result, "\n", "\\n");
 	replace(result, "\"", "\\\"");
@@ -268,9 +268,9 @@ void Function::codegenMethodTable(std::ostream &out) const
 	for(const auto &sig : _signatures)
 	{
 		auto argStream = stream(sig.args)
-			| transformed([](const auto &arg) { return arg.argName + ": " + arg.typeNameSpelling; })
+			| transformed([](const Arg &arg) { return arg.argName + ": " + arg.typeNameSpelling; })
 			| interposed(", ");
-
+			
 		docstringStream << "(" << cat(argStream) << ") -> " << sig.returnTypeSpelling << "\n";
 	}
 

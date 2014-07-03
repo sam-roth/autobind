@@ -4,7 +4,16 @@
 #include <map>
 #include <string>
 #include <sstream>
+#include <memory>
 #include <clang/AST/ASTConsumer.h>
+/// Defines a function with the signature `signature` and an automatcally-deduced return type,
+/// returning the given expression. The `expression` argument must be an expression (no semicolon, if, ...).
+/// Example: AB_RETURN_AUTO(doubleNumber(int n), n * 2)
+///
+/// This was added because the code was backported from C++1y to C++11.
+///
+#define AB_RETURN_AUTO(signature, expression)\
+	auto signature -> decltype(expression) { return (expression); }
 
 template <class F>
 clang::ASTConsumer *newASTConsumer(F func)
@@ -25,6 +34,13 @@ clang::ASTConsumer *newASTConsumer(F func)
 
 
 namespace autobind {
+
+template <class T, class... Args>
+std::unique_ptr<T> make_unique(Args &&... args)
+{
+	return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+
 std::string gensym(const std::string &prefix="G");
 template <class T>
 struct IterRange
