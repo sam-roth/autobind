@@ -9,6 +9,7 @@
 #include <Python.h>
 
 #include <cxxabi.h>
+#include <memory>
 #include <iostream>
 #include <string>
 #include <vector>

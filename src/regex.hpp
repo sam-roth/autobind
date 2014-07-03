@@ -32,6 +32,7 @@ namespace autobind
 		using std::tr1::regex_iterator;
 		using std::tr1::regex_token_iterator;
 		using std::tr1::regex;
+		using std::tr1::smatch;
 	}
 	#else
 	namespace regex
@@ -48,11 +49,12 @@ namespace autobind
 		using std::regex_iterator;
 		using std::regex_token_iterator;
 		using std::regex;
+		using std::smatch;
 	}
 	#endif
 template <class Func>
 std::string regex_replace(const std::string &s,
-                          const std::regex &pattern,
+                          const regex::regex &pattern,
                           Func f)
 {
 	typedef std::string::const_iterator It;

@@ -49,6 +49,7 @@ add_library(
 
 target_link_libraries(
 	autobind_core
+	${EXTRA_LIBS}
 # 	${Boost_LIBRARIES}
 	${CLANG_LIBS}
 	${LLVM_LIBS_CORE}

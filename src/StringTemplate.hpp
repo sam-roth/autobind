@@ -185,7 +185,7 @@ public:
 	void expand(std::ostream &os, const ITemplateNamespace &ns) const
 	{
 
-		auto replacer = [&](const std::smatch &m) {
+		auto replacer = [&](const regex::smatch &m) {
 
 			bool needsIndent = true;
 			int index = m.position() - 1;

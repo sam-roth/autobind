@@ -43,16 +43,16 @@ static void testRegexReplace()
 		mctah[0].fsrit == mctah[0].snoced.
 	)EOF";
 
-	auto repl = [&](const std::smatch &m) {
+	auto repl = [&](const autobind::regex::smatch &m) {
 		std::string mid = m[2];
 		std::reverse(mid.begin(), mid.end());
 
 		return m[1].str() + mid + m[3].str();
 	};
 
-	std::regex pattern("(\\w)(\\w+)(\\w)");
+	autobind::regex::regex pattern("(\\w)(\\w+)(\\w)");
 
-	auto munged = autobind::regex_replace(text, pattern, repl);
+	auto munged = autobind::regex_replace(std::string(text), pattern, repl);
 	assert(munged == expected);
 	// for good measure
 	auto reconstructed = autobind::regex_replace(munged, pattern, repl);
