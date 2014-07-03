@@ -3,6 +3,14 @@
 Getting Started
 ===============
 
+
+.. warning::
+    
+    Autobind is not a mature project. There may be large interface and
+    implementation changes ahead. It is also not extensively verified. That
+    said, if you're working on a proof-of-concept design, it may be a good fit.
+    Please consider your :ref:`options <other-tools>` carefully.
+
 Building Autobind
 -----------------
 
@@ -26,29 +34,8 @@ Building Autobind
 If Clang is not your default compiler you must set the CXX environment variable
 to your Clang binary.
 
-.. note::
-
-    A note and apology to GNU users:
-
-    First, you may be able to use GCC 4.9 to build autobind, but I haven't
-    tested this. The alternative is somewhat more complicated. (I haven't had
-    time to test this either, but I think that it may work.)
-
-    Clang itself must be built using libc++ (rather than libstdc++) or
-    you will receive errors upon trying to link. If you do, download the Clang and
-    LLVM sources, configure them to be built using an existing Clang and libc++,
-    then build Clang and LLVM. Finally, when attempting to rebuild autobind, make
-    sure these libraries are the ones the autobind finds during its configuration
-    process. You may need to alter the CMake variables manually. Consult the CMake
-    manual.
-
-    Yes, this process involves three compilers and two standard libraries. I'm
-    sorry. There's nothing to be done about this, besides rewrite the parts of the
-    codebase that use C++1y. which is what I will be doing over the next few days.
-
-    For the time being, if you have a Mac or a recent FreeBSD system (both LLVM-based),
-    consider using that instead.
-
+.. note::   If you are on a GNU system, such as GNU/Linux, please follow the
+            directions in :ref:`appendix--building-with-gcc`.
 
 Once you've installed the dependencies, just do::
 
@@ -57,11 +44,10 @@ Once you've installed the dependencies, just do::
     $ cmake .
     $ make -j4
 
-If you get errors about ``auto`` not being valid in function declarations,
-there is likely a problem with your compiler. Please see the note above.
-
-If it doesn't work, you found a bug, either in the program or the
-documentation. Please file a bug report [#bugs]_.
+If you're using Linux and you have problems during the linking phase of the
+build, please see the note above. Otherwise, if it doesn't work, you found a
+bug, either in the program or the documentation. Please file a bug report
+[#bugs]_.
 
 
 Using the Wrapper Script

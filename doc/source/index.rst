@@ -64,7 +64,7 @@ Table of Contents
     getting-started
     cxx-support
     autobind-cxxapi
-    implementation-notes
+    appendices
 
 
 Indices and tables
@@ -84,6 +84,9 @@ Further Reading
 * Similar Projects
     * `MOC-NG <http://woboq.com/blog/moc-with-clang.html>`_, a Clang-based
       reimplementation of the Qt Meta-Object Compiler.
+
+.. _other-tools:
+
 * Other Ways of Creating Native-Code Python Modules
     * Official
         * :ref:`The Python/C API <python:c-api-index>`

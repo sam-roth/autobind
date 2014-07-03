@@ -3,8 +3,9 @@
 
 
 
-Implementation Notes
-====================
+==============================
+Appendix: Implementation Notes
+==============================
 
 .. note::
     This page is a work in progress.
