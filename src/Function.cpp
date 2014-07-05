@@ -228,9 +228,103 @@ void Function::codegenDefinitionBody(std::ostream &out, size_t index) const
 
 	out << "}\n";
 }
+
+void Function::codegenArgSizeCalc(std::ostream &out) const
+{
+	out << "PyTuple_GET_SIZE(args) + (kw? PyDict_Size(kw) : 0)";
+}
+
 void Function::codegenDefinition(std::ostream &out) const
 {
 	using namespace streams;
+
+	static const StringTemplate root = R"EOF(
+	{{prototype}}
+	{
+		bool ok = true;
+		PyObject *returnValue = 0;
+
+		const size_t argCount = {{argSize}};
+
+		switch(argCount)
+		{
+			{{cases}}
+			default: {
+				PyErr_Format(PyExc_TypeError,
+				             "Unexpected number of arguments to function: %d.",
+				             argCount);
+
+				return 0;
+			}
+		}
+
+		return returnValue;
+	}
+	)EOF";
+
+	static const StringTemplate case_ = R"EOF(
+	case {{count}}: {
+		{{overloads}}
+	} break;
+	)EOF";
+
+	static const StringTemplate overload = R"EOF(
+	{
+		{{unpack}}
+		if(ok)
+		{
+			{{body}}
+			return returnValue;
+		}
+	}
+	)EOF";
+
+	root.into(out)
+		.set("prototype", boost::format(FunctionPrototype) % _implName % selfTypeName())
+		.setFunc("argSize", [&](std::ostream &out) {
+			codegenArgSizeCalc(out);
+		})
+		.setFunc("cases", [&](std::ostream &out) {
+			// group overloads by argument count
+			std::vector<std::pair<size_t, size_t>> overloadRanges;
+			overloadRanges.emplace_back(0, 0);
+			size_t prevSize = 0;
+			for(const auto &sig : stream(_signatures) | enumerated())
+			{
+				if(prevSize != sig.second.args.size())
+				{
+					overloadRanges.emplace_back(sig.first, sig.first + 1);
+					prevSize = sig.second.args.size();
+				}
+				else
+				{
+					overloadRanges.back().second = sig.first + 1;
+				}
+			}
+			out << "\n// found " << overloadRanges.size() << " overload ranges\n";
+
+			for(auto range : overloadRanges)
+			{
+				if(range.first == range.second) continue;
+
+				case_.into(out)
+					.set("count", _signatures[range.first].args.size())
+					.setFunc("overloads", [&](std::ostream &out) {
+						for(size_t i = range.first; i < range.second; ++i)
+						{
+							overload.into(out)
+								.setFunc("unpack", [&](std::ostream &out) { codegenTupleUnpack(out, i); })
+								.setFunc("body", [&](std::ostream &out) { codegenDefinitionBody(out, i); })
+								.expand();
+						}
+					})
+					.expand();
+			}
+		})
+		.expand();
+
+
+#if 0
 	out << boost::format(FunctionPrototype) % _implName % selfTypeName() << "\n{\n";
 
 	{
@@ -259,6 +353,7 @@ void Function::codegenDefinition(std::ostream &out) const
 		out << "return returnValue;\n";
 	}
 	out << "}\n";
+#endif
 }
 
 void Function::codegenMethodTable(std::ostream &out) const
@@ -289,10 +384,17 @@ void Function::merge(const autobind::Export &e)
 {
 	if(auto func = dynamic_cast<const Function *>(&e))
 	{
+
 		for(const auto &sig : func->signatures())
 		{
 			_signatures.push_back(sig);
 		}
+
+		// sort signatures by length
+		std::stable_sort(_signatures.begin(),
+		                 _signatures.end(),
+		                 [](const Signature &a, const Signature &b) { return a.args.size() < b.args.size(); });
+
 
 		if(!func->docstring().empty())
 		{
