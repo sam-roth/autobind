@@ -301,13 +301,14 @@ namespace python
 		return std::shared_ptr<PyObject>(Py_None, disposePyObject);
 	}
 
+	class ObjectRef;
+
 	class Exception: public std::exception
 	{
+		mutable std::string _msg;
 	public:
-		const char *what() const throw()
-		{
-			return "<python exception>";
-		}
+		const char *what() const throw();
+		ObjectRef asObject() const;
 	};
 
 	class IteratorRef
@@ -362,12 +363,32 @@ namespace python
 		template <class T>
 		static ObjectRef create(const T &value)
 		{
-			return ObjectRef(borrow(Conversion<T>::dump(value)));
+			return steal(Conversion<T>::dump(value));
+		}
+
+		static ObjectRef steal(PyObject *o)
+		{
+			return ObjectRef(std::shared_ptr<PyObject>(o, &disposePyObject));
+		}
+
+		static ObjectRef borrow(PyObject *o)
+		{
+			return ObjectRef(::python::borrow(o));
 		}
 
 		static ObjectRef none()
 		{
 			return ObjectRef(getNone());
+		}
+
+		PyObject *release()
+		{
+			// We can't actually release the underlying smart pointer, so just
+			// bump the Python refcount.
+			auto result = _obj.get();
+			Py_XINCREF(result);
+			_obj = getNone();
+			return result;
 		}
 
 
@@ -419,8 +440,186 @@ namespace python
 			return this->convert<Optional<T>>();
 		}
 
+		std::string repr() const;
+		std::string str() const;
+
 		ListRef asList() const;
+
+
+		ObjectRef getattr(const std::string &name) const
+		{
+			return getattr(name.c_str());
+		}
+		
+
+		ObjectRef getattr(const char *name) const
+		{
+			if(auto result = PyObject_GetAttrString(*this, name))
+				return steal(result);
+			else
+				throw Exception();
+		}
+
+		void setattr(const std::string &name, ObjectRef o)
+		{
+			setattr(name.c_str(), o);
+		}
+
+		void setattr(const char *name, ObjectRef o)
+		{
+			if(PyObject_SetAttrString(*this, name, o) == -1)
+				throw Exception();
+		}
+
+
+		void delattr(const std::string &name)
+		{
+			delattr(name.c_str());
+		}
+
+
+		void delattr(const char *name)
+		{
+			if(PyObject_DelAttrString(*this, name) == -1)
+				throw Exception();
+		}
+
+		template <class... Args>
+		ObjectRef operator ()(const Args &... args)
+		{
+
+			if(auto result = PyObject_CallFunctionObjArgs(*this, 
+			                                              static_cast<PyObject *>(create(args))...,
+			                                              0))
+			{
+				return steal(result);
+			}
+			else
+			{
+				throw python::Exception();
+			}
+		}
+
+		operator bool() const
+		{
+			int result = PyObject_IsTrue(*this);
+			if(result == -1) throw Exception();
+			return result == 1;
+		}
+
+		bool operator !() const
+		{
+			int result = PyObject_Not(*this);
+			if(result == -1) throw Exception();
+			return result == 1;
+		}
+
+		Py_hash_t hash() const
+		{
+			Py_hash_t result = PyObject_Hash(*this);
+			if(result == -1) throw Exception();
+			return result;
+		}
+
+		bool isinstance(const ObjectRef &ty) const
+		{
+			int result = PyObject_IsInstance(*this, ty);
+			if(result == -1) throw Exception();
+			return result == 1;
+		}
+
+		bool issubclass(const ObjectRef &base) const
+		{
+			int result = PyObject_IsSubclass(*this, base);
+			if(result == -1) throw Exception();
+			return result == 1;
+		}
+
+		ObjectRef type() const
+		{
+			if(auto result = PyObject_Type(*this))
+				return steal(result);
+			else
+				throw Exception();
+		}
 	};
+
+	#define MBR(ty, name) inline ty name(const ObjectRef &o) { return o.name(); }
+
+	MBR(ObjectRef, type)
+	MBR(Py_hash_t, hash)
+	MBR(std::string, str)
+	MBR(std::string, repr)
+
+	#undef MBR
+
+	inline bool isinstance(const ObjectRef &o, const ObjectRef &ty)
+	{
+		return o.isinstance(ty);
+	}
+
+	inline bool issubclass(const ObjectRef &derived, const ObjectRef &base)
+	{
+		return derived.issubclass(base);
+	}
+
+	inline ObjectRef getattr(const ObjectRef &o, const char *name)
+	{
+		return o.getattr(name);
+	}
+
+	inline void setattr(ObjectRef &o, const char *name, const ObjectRef &value)
+	{
+		o.setattr(name, value);
+	}
+
+	inline ObjectRef getattr(ObjectRef &o, const char *name, const ObjectRef &defaultValue)
+	{
+		try
+		{
+			return o.getattr(name);
+		}
+		catch(python::Exception &exc)
+		{
+			if(PyErr_ExceptionMatches(PyExc_AttributeError))
+			{
+				return defaultValue;
+			}
+			else
+			{
+				throw;
+			}
+		}
+	}
+
+
+	inline python::ObjectRef Exception::asObject() const
+	{
+		PyObject *ty=0, *val=0, *tb=0;
+		PyErr_Fetch(&ty, &val, &tb);
+		PyErr_NormalizeException(&ty, &val, &tb);
+		auto result = ObjectRef::borrow(val);
+		PyErr_Restore(ty, val, tb);
+		return result;
+	}
+	inline const char *Exception::what() const throw()
+	{
+		if(_msg.empty())
+		{
+			try
+			{
+				auto obj = asObject();
+				_msg = obj.str();
+			}
+			catch(std::exception &exc)
+			{
+				_msg = "<Python exception>";
+			}
+		}
+
+		return _msg.c_str();
+	}
+
 
 	class ListRef: public ObjectRef
 	{
@@ -571,6 +770,38 @@ namespace python
 	};
 
 
+	template <>
+	struct Conversion<char>
+	{
+		static char load(PyObject *o)
+		{
+			Py_ssize_t n;
+			if(auto text = PyUnicode_AsUTF8AndSize(o, &n))
+			{
+				if(n != 1)
+				{
+					throw std::invalid_argument("String must consist of a single byte.");
+				}
+
+				return *text;
+			}
+			else
+			{
+				throw python::Exception();
+			}
+		}
+		
+		static PyObject *dump(char c)
+		{
+			auto res = PyUnicode_DecodeUTF8(&c, 1, "surrogateescape");
+			if(!res)
+			{
+				throw python::Exception();
+			}
+
+			return res;
+		}
+	};
 
 
 	template <>
@@ -699,7 +930,17 @@ namespace python
 		}
 	};
 
+	inline std::string ObjectRef::repr() const
+	{
+		return steal(PyObject_Repr(*this)).convert<std::string>();
+	}
 
+
+	inline std::string ObjectRef::str() const
+	{
+		return steal(PyObject_Str(*this)).convert<std::string>();
+	}
+	
 
 	template <class T>
 	Optional<typename ConversionLoadResult<T>::type> 

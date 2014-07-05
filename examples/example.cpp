@@ -83,7 +83,19 @@ struct pyexport StringMap
 	}
 };
 
-
+pyexport std::string tryConvertingToInt(python::ObjectRef o)
+{
+	try
+	{
+		int i = o.convert<int>();
+		return std::to_string(i);
+	}
+	catch(python::Exception &exc)
+	{
+		std::cout << exc.what() << std::endl;
+		throw;
+	}
+}
 
 
 /// run a program
@@ -157,3 +169,14 @@ struct python::protocols::Str<Noddy>
 	}
 };
 
+pyexport void callWithCount(python::ObjectRef callable)
+{
+	static int count = 0;
+	callable(count++);
+}
+
+pyexport void callMethodWithCount(python::ObjectRef obj, const char *method)
+{
+	static int count = 0;
+	getattr(obj, method)(count++);
+}
