@@ -74,8 +74,8 @@ void TupleUnpacker::codegen(std::ostream &out) const
 	using namespace streams;
 
 	static const StringTemplate top = R"EOF(
-
-	static const char *{{kwlist}} = {
+	
+	static const char *{{kwlist}}[] = {
 		{{argnames}}
 		0
 	};

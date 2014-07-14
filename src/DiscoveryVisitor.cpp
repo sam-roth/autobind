@@ -5,6 +5,8 @@
 
 #include "util.hpp"
 #include "Type.hpp"
+#include "exports/Func.hpp"
+
 #include <clang/Sema/Sema.h>
 #include <unordered_set>
 
@@ -428,7 +430,10 @@ public:
 
 		return errorToDiag(decl, [&]{
 			this->validateExportedFunctionDecl(decl);
-			_modstack.back()->addExport(_wrapperEmitter.function(decl));
+			auto func = ::autobind::make_unique<Func>(decl->getNameAsString());
+			func->addDecl(*decl);
+			_modstack.back()->addExport(std::move(func));
+// 			_modstack.back()->addExport(_wrapperEmitter.function(decl));
         });
 	}
 

@@ -30,9 +30,11 @@ void CallGenerator::codegen(std::ostream &out) const
 	{
 		try
 		{
-			{{prefix}}{{name}}(
+			{{resultDecl}}{{prefix}}{{name}}(
 				{{args}}
 			);
+
+			{{success}}
 		}
 		catch(::python::Exception &exc)
 		{
@@ -42,16 +44,20 @@ void CallGenerator::codegen(std::ostream &out) const
 		{
 			{{stdException}}
 		}
-
-		{{success}}
-
 	}
 	)EOF";
+
+	std::string resultDecl;
+	if(!_decl->getResultType()->isVoidType())
+	{
+		resultDecl = _decl->getResultType().getAsString() + " result = ";
+	}
 
 	top.into(out)
 		.setFunc("unpack", method(_unpacker, &TupleUnpacker::codegen))
 		.set("ok", _unpacker.okRef())
 		.set("prefix", "")
+		.set("resultDecl", resultDecl)
 		.set("name", _decl->getNameAsString())
 		.set("args", streams::cat(streams::stream(_unpacker.elementRefs()) 
 		                          | streams::interposed(",\n")))
@@ -84,7 +90,18 @@ void CallGenerator::codegenErrorReturn(std::ostream &out) const
 
 void CallGenerator::codegenSuccess(std::ostream &out) const
 {
-	out << "PyErr_Clear();\nPy_RETURN_NONE;\n";
+	out << "PyErr_Clear();\n";
+
+	if(_decl->getResultType()->isVoidType())
+	{
+		out << "Py_RETURN_NONE;\n";
+	}
+	else
+	{
+		out << "return ::python::Conversion<"
+			<< _decl->getResultType().getAsString()
+			<< ">::dump(result);";
+	}
 }
 
 

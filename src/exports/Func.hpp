@@ -13,9 +13,12 @@ namespace autobind {
 class Func: public Export
 {
 	std::vector<const clang::FunctionDecl *> _decls;
-public:
-	using Export::Export;
+	std::string _implRef;
 
+	void codegenPrototype(std::ostream &) const;
+public:
+	Func(std::string name);
+	
 	virtual void codegenDeclaration(std::ostream &) const override;
 	virtual void codegenDefinition(std::ostream &) const override;
 	virtual void codegenMethodTable(std::ostream &) const override;

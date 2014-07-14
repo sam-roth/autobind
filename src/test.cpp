@@ -5,12 +5,14 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Tooling/Tooling.h"
-
+#include "clang/AST/Attr.h"
 
 #include "util.hpp"
 #include "StringTemplate.hpp"
 #include "TupleUnpacker.hpp"
 #include "CallGenerator.hpp"
+#include "exports/Func.hpp"
+#include "Module.hpp"
 
 #include "regex.hpp"
 #include "stream.hpp"
@@ -91,6 +93,18 @@ clang::ASTFrontendAction *newASTFrontendAction(F &&func)
 	return new Result(func);
 }
 
+bool hasAnnotation(const clang::Decl &decl, llvm::StringRef ann)
+{
+	using namespace streams;
+	for(auto a : stream(decl.specific_attr_begin<clang::AnnotateAttr>(),
+	                    decl.specific_attr_end<clang::AnnotateAttr>()))
+	{
+		if(a->getAnnotation() == ann) return true;
+	}
+
+	return false;
+}
+
 int main()
 {
 	testStringTemplate();
@@ -98,36 +112,34 @@ int main()
 
 	auto testTupleUnpacker = [&](clang::ASTContext &ctx) {
 		auto tu = ctx.getTranslationUnitDecl();
+		autobind::Module mod;
+		mod.setName("testmod");
 		for(auto decl : streams::stream(tu->decls_begin(), tu->decls_end()))
 		{
+			if(!hasAnnotation(*decl, "pyexport")) continue;
+
 			if(auto funcDecl = llvm::dyn_cast_or_null<clang::FunctionDecl>(decl))
 			{
 				funcDecl->dumpColor();
 
-				autobind::TupleUnpacker unpacker("args", "kwargs");
-				for(auto param : streams::stream(funcDecl->param_begin(),
-				                                 funcDecl->param_end()))
-				{
-					unpacker.addElement(*param);
-				}
-
-				unpacker.codegen(std::cout);
-
-				std::cout << streams::cat(streams::stream(unpacker.elementRefs())
-				                 | streams::interposed(", ")) << std::endl;
-
-
-				std::cout << "-----------------------------------\n";
-
-				autobind::CallGenerator cg("args", "kwargs", funcDecl);
-				cg.codegen(std::cout);
-
+				auto f = autobind::make_unique<autobind::Func>(funcDecl->getQualifiedNameAsString());
+				f->addDecl(*funcDecl);
+				mod.addExport(std::move(f));
 			}
 		}
+
+		mod.setSourceTUPath("?");
+		mod.codegen(std::cout);
 	};
 
 	clang::tooling::runToolOnCode(newASTFrontendAction(testTupleUnpacker),
-	                              "class C; void foo(int bar, const char *baz, const C &quux);");
+	                              R"EOF(
+	                              class C;
+	                              __attribute__((annotate("pyexport")))
+	                              int foo(int bar, const char *baz, const C &quux);
+	                              C foo(int bar);
+
+	                              )EOF");
 
 }
 

@@ -39,6 +39,7 @@ add_library(
 	autobind_core
 	SHARED
 
+	src/exports/Func.cpp
 	src/CallGenerator.cpp
 	src/Function.cpp
 	src/DiscoveryVisitor.cpp

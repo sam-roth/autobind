@@ -27,13 +27,13 @@ std::string gensym(const std::string &prefixUnsymbolified)
 	if(it == gensyms.end())
 	{
 		gensyms[prefix] = 1;
-		return prefix + "$0";
+		return prefix + "X_AUTOBIND_X0";
 	}
 	else
 	{
 		size_t oldCount = it->second;
 		++it->second;
-		return prefix + "$" + std::to_string(oldCount);
+		return prefix + "X_AUTOBIND_X" + std::to_string(oldCount);
 	}
 }
 
