@@ -45,6 +45,7 @@ add_library(
 	src/Getter.cpp
 	src/util.cpp
 	src/Module.cpp
+	src/TupleUnpacker.cpp
 )
 
 target_link_libraries(

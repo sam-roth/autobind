@@ -1,8 +1,18 @@
 #include <iostream>
+#include <clang/AST/ASTContext.h>
+#include "clang/AST/ASTConsumer.h"
+#include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/FrontendAction.h"
+#include "clang/Tooling/Tooling.h"
+
+
 #include "util.hpp"
 #include "StringTemplate.hpp"
+#include "TupleUnpacker.hpp"
 #include "regex.hpp"
-
+#include "stream.hpp"
+#include "printing.hpp"
 static void testStringTemplate()
 {
 	autobind::StringTemplate stmp = R"EOF(
@@ -59,11 +69,57 @@ static void testRegexReplace()
 	assert(reconstructed == text);
 }
 
+template <class F>
+clang::ASTFrontendAction *newASTFrontendAction(F &&func)
+{
+	class Result: public clang::ASTFrontendAction
+	{
+		F &&func;
+	public:
+		Result(F &&func)
+		: func(func) { }
+
+		virtual clang::ASTConsumer *CreateASTConsumer(
+	    clang::CompilerInstance &compiler, llvm::StringRef inFile) override
+		{
+			return newASTConsumer(func);
+		}
+	};
+
+	return new Result(func);
+}
+
 int main()
 {
 	testStringTemplate();
-
 	testRegexReplace();
+
+	auto testTupleUnpacker = [&](clang::ASTContext &ctx) {
+		auto tu = ctx.getTranslationUnitDecl();
+		for(auto decl : streams::stream(tu->decls_begin(), tu->decls_end()))
+		{
+			if(auto funcDecl = llvm::dyn_cast_or_null<clang::FunctionDecl>(decl))
+			{
+				funcDecl->dumpColor();
+
+				autobind::TupleUnpacker unpacker("args", "kwargs");
+				for(auto param : streams::stream(funcDecl->param_begin(),
+				                                 funcDecl->param_end()))
+				{
+					unpacker.addElement(*param);
+				}
+
+				unpacker.codegen(std::cout);
+
+				std::cout << streams::cat(streams::stream(unpacker.elementRefs())
+				                 | streams::interposed(", ")) << std::endl;
+
+			}
+		}
+	};
+
+	clang::tooling::runToolOnCode(newASTFrontendAction(testTupleUnpacker),
+	                              "class C; void foo(int bar, const char *baz, const C &quux);");
 
 }
 
