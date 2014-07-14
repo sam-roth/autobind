@@ -10,6 +10,8 @@
 #include "util.hpp"
 #include "StringTemplate.hpp"
 #include "TupleUnpacker.hpp"
+#include "CallGenerator.hpp"
+
 #include "regex.hpp"
 #include "stream.hpp"
 #include "printing.hpp"
@@ -113,6 +115,12 @@ int main()
 
 				std::cout << streams::cat(streams::stream(unpacker.elementRefs())
 				                 | streams::interposed(", ")) << std::endl;
+
+
+				std::cout << "-----------------------------------\n";
+
+				autobind::CallGenerator cg("args", "kwargs", funcDecl);
+				cg.codegen(std::cout);
 
 			}
 		}

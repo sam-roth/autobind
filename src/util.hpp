@@ -35,6 +35,33 @@ clang::ASTConsumer *newASTConsumer(F func)
 
 namespace autobind {
 
+
+template <class T, class F>
+class MethodRef
+{
+	T &&that;
+	F mbr;
+public:
+	MethodRef(T &&that, F mbr)
+	: that(that)
+	, mbr(mbr)
+	{
+
+	}
+
+	template <class... Args>
+	AB_RETURN_AUTO(operator()(Args &&... args) const,
+	               (that.*mbr)(std::forward<Args>(args)...))
+
+};
+
+template <class T, class F>
+MethodRef<T, F> method(T &&that, F mbr)
+{
+	return MethodRef<T, F>(that, mbr);
+}
+
+
 template <class T, class... Args>
 std::unique_ptr<T> make_unique(Args &&... args)
 {
