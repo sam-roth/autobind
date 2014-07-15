@@ -10,6 +10,7 @@ class CallGenerator
 {
 	TupleUnpacker _unpacker;
 	const clang::FunctionDecl *const _decl;
+	std::string _prefix;
 protected:
 	virtual void codegenSuccess(std::ostream &) const;
 	virtual void codegenErrorReturn(std::ostream &) const;
@@ -18,7 +19,8 @@ protected:
 public:
 	CallGenerator(std::string argsRef,
 	              std::string kwargsRef,
-	              const clang::FunctionDecl *decl);
+	              const clang::FunctionDecl *decl,
+	              std::string prefix="");
 
 	void codegen(std::ostream &) const;
 

@@ -12,6 +12,8 @@
 #include "TupleUnpacker.hpp"
 #include "CallGenerator.hpp"
 #include "exports/Func.hpp"
+#include "exports/Class.hpp"
+
 #include "Module.hpp"
 
 #include "regex.hpp"
@@ -132,6 +134,7 @@ int main()
 		mod.codegen(std::cout);
 	};
 
+
 	clang::tooling::runToolOnCode(newASTFrontendAction(testTupleUnpacker),
 	                              R"EOF(
 	                              class C;
@@ -140,6 +143,37 @@ int main()
 	                              C foo(int bar);
 
 	                              )EOF");
+
+
+	std::cout << "=========================================================================\n";
+
+	auto testClass = [&](clang::ASTContext &ctx) {
+		auto tu = ctx.getTranslationUnitDecl();
+		for(auto decl : streams::stream(tu->decls_begin(), tu->decls_end()))
+		{
+			if(!hasAnnotation(*decl, "pyexport")) continue;
+
+			if(auto classDecl = llvm::dyn_cast_or_null<clang::CXXRecordDecl>(decl))
+			{
+				classDecl->dumpColor();
+
+				auto klass = autobind::make_unique<autobind::Class>(*classDecl);
+				klass->codegenDeclaration(std::cout);
+				klass->codegenDefinition(std::cout);
+			}
+		}
+	};
+
+
+	auto classSample = R"EOF(
+	class __attribute__((annotate("pyexport"))) Foo
+	{
+	public:
+		void bar() { }
+	};
+	)EOF";
+	
+	clang::tooling::runToolOnCode(newASTFrontendAction(testClass), classSample);
 
 }
 

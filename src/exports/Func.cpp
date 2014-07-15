@@ -44,13 +44,15 @@ void Func::codegenDefinition(std::ostream &out) const
 {
 	// FIXME: should clear error after failed overload
 
+	const char *prefix = _selfTypeRef.empty()? "" : "self->object.";
+
 	codegenPrototype(out);
 	out << "\n{\n";
 	{
 		IndentingOStreambuf indenter(out, "\t");
 		for(auto decl : _decls)
 		{
-			CallGenerator cgen("args", "kwargs", decl);
+			CallGenerator cgen("args", "kwargs", decl, prefix);
 			cgen.codegen(out);
 		}
 		out << "return 0;\n";
@@ -61,11 +63,30 @@ void Func::codegenDefinition(std::ostream &out) const
 
 void Func::codegenMethodTable(std::ostream &out) const
 {
+	std::string docstringEscaped;
+	for(auto decl : _decls)
+	{
+		if(!docstringEscaped.empty())
+		{
+			docstringEscaped += "\\n";
+		}
+
+		docstringEscaped += createPythonSignature(*decl);
+		docstringEscaped += "\\n";
+
+		auto thisOverloadDocEscaped = processDocString(findDocumentationComments(*decl));
+		if(!thisOverloadDocEscaped.empty())
+		{
+			docstringEscaped += thisOverloadDocEscaped;
+			docstringEscaped += "\\n";
+		}
+	}
+
 	// TODO: docstrings
 	out << "{"
 		<< "\"" << name() << "\", "
 		<< "(PyCFunction) &" << _implRef << ", METH_VARARGS | METH_KEYWORDS, "
-		<< "0"
+		<< "\"" << docstringEscaped << "\""
 		<< "},\n";
 }
 

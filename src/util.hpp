@@ -14,7 +14,7 @@
 ///
 #define AB_RETURN_AUTO(signature, expression)\
 	auto signature -> decltype(expression) { return (expression); }
-	
+
 template <class F>
 clang::ASTConsumer *newASTConsumer(F func)
 {
@@ -87,6 +87,8 @@ IterRange<T> toRange(T first, T last)
 
 #define PROP_RANGE(prefix) toRange(prefix ## _begin(), prefix ## _end())
 
+std::string findDocumentationComments(const clang::Decl &d);
+std::string createPythonSignature(const clang::FunctionDecl &d);
 
 template <class K, class V>
 boost::optional<const V &> get(const std::map<K, V> &map,

@@ -40,6 +40,7 @@ add_library(
 	SHARED
 
 	src/exports/Func.cpp
+	src/exports/Class.cpp
 	src/CallGenerator.cpp
 	src/Function.cpp
 	src/DiscoveryVisitor.cpp

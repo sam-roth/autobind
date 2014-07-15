@@ -7,9 +7,11 @@ namespace autobind {
 
 CallGenerator::CallGenerator(std::string argsRef, 
                              std::string kwargsRef,
-                             const clang::FunctionDecl *decl)
+                             const clang::FunctionDecl *decl,
+                             std::string prefix)
 : _unpacker(std::move(argsRef), std::move(kwargsRef))
 , _decl(decl)
+, _prefix(std::move(prefix))
 {
 	for(auto param : streams::stream(decl->param_begin(), decl->param_end()))
 	{
@@ -50,11 +52,11 @@ void CallGenerator::codegen(std::ostream &out) const
 	{
 		resultDecl = _decl->getResultType().getAsString() + " result = ";
 	}
-
+	
 	top.into(out)
 		.setFunc("unpack", method(_unpacker, &TupleUnpacker::codegen))
 		.set("ok", _unpacker.okRef())
-		.set("prefix", "")
+		.set("prefix", _prefix)
 		.set("resultDecl", resultDecl)
 		.set("name", _decl->getNameAsString())
 		.set("args", streams::cat(streams::stream(_unpacker.elementRefs()) 
