@@ -44,8 +44,8 @@ void Func::codegenDefinition(std::ostream &out) const
 {
 	// FIXME: should clear error after failed overload
 
-	const char *prefix = _selfTypeRef.empty()? "" : "self->object.";
-
+	const char *prefix = _selfTypeRef == "PyObject"? "" : "self->object.";
+	
 	codegenPrototype(out);
 	out << "\n{\n";
 	{
