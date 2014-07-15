@@ -9,6 +9,7 @@ namespace autobind {
 Func::Func(std::string name)
 : Export(name)
 , _implRef(gensym(name))
+, _selfTypeRef("PyObject")
 {
 }
 
@@ -29,8 +30,7 @@ void Func::merge(const autobind::Export &other)
 }
 void Func::codegenPrototype(std::ostream &out) const
 {
-	// TODO: implement methods
-	out << "PyObject *" << _implRef << "(PyObject *self, PyObject *args, PyObject *kwargs)";
+	out << "PyObject *" << _implRef << "(" << _selfTypeRef << " *self, PyObject *args, PyObject *kwargs)";
 }
 
 void Func::codegenDeclaration(std::ostream &out) const

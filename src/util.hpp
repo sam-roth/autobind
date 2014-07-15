@@ -6,7 +6,7 @@
 #include <sstream>
 #include <memory>
 #include <clang/AST/ASTConsumer.h>
-/// Defines a function with the signature `signature` and an automatcally-deduced return type,
+/// Defines a function with the signature `signature` and an automatically-deduced return type,
 /// returning the given expression. The `expression` argument must be an expression (no semicolon, if, ...).
 /// Example: AB_RETURN_AUTO(doubleNumber(int n), n * 2)
 ///
@@ -14,7 +14,7 @@
 ///
 #define AB_RETURN_AUTO(signature, expression)\
 	auto signature -> decltype(expression) { return (expression); }
-
+	
 template <class F>
 clang::ASTConsumer *newASTConsumer(F func)
 {
@@ -35,6 +35,7 @@ clang::ASTConsumer *newASTConsumer(F func)
 
 namespace autobind {
 
+std::string processDocString(const std::string &docstring);
 
 template <class T, class F>
 class MethodRef

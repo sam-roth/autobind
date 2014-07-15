@@ -16,7 +16,7 @@
 namespace autobind {
 	
 // std::string gensym(const std::string &prefix="G");
-std::string processDocString(const std::string &docstring);
+
 
 class Module;
 

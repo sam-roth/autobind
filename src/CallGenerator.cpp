@@ -4,7 +4,7 @@
 #include "StringTemplate.hpp"
 
 namespace autobind {
-	
+
 CallGenerator::CallGenerator(std::string argsRef, 
                              std::string kwargsRef,
                              const clang::FunctionDecl *decl)
@@ -20,9 +20,7 @@ CallGenerator::CallGenerator(std::string argsRef,
 
 void CallGenerator::codegen(std::ostream &out) const
 {
-	// TODO: implement return values
 	// TODO: implement methods
-
 	static const StringTemplate top = R"EOF(
 	{{unpack}}
 

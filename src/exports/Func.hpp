@@ -14,11 +14,12 @@ class Func: public Export
 {
 	std::vector<const clang::FunctionDecl *> _decls;
 	std::string _implRef;
+	std::string _selfTypeRef;
 
 	void codegenPrototype(std::ostream &) const;
 public:
 	Func(std::string name);
-	
+
 	virtual void codegenDeclaration(std::ostream &) const override;
 	virtual void codegenDefinition(std::ostream &) const override;
 	virtual void codegenMethodTable(std::ostream &) const override;
@@ -31,6 +32,16 @@ public:
 	const std::vector<const clang::FunctionDecl *> &decls() const
 	{
 		return _decls;
+	}
+
+	void setSelfTypeRef(std::string r)
+	{
+		_selfTypeRef = std::move(r);
+	}
+	
+	const std::string &selfTypeRef() const
+	{
+		return _selfTypeRef;
 	}
 
 	virtual void merge(const Export &e) override;

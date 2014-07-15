@@ -112,11 +112,27 @@ std::string dedent(const std::string &text)
 		}
 
 		it = next;
-	
+
 
 	}
 	return result;
 }
+
+
+
+std::string processDocString(const std::string &docstring)
+{
+	auto result = regex::regex_replace(docstring, regex::regex("(^|\n+)\\s*(///|\\*)"), std::string("$1"));
+	result = regex::regex_replace(result, regex::regex("(^|\n+)\\s+"), std::string("$1"));
+	replace(result, "\\", "\\\\");
+	replace(result, "\n", "\\n");
+	replace(result, "\"", "\\\"");
+
+	
+
+	return result;
+}
+
 
 } // autobind
 
