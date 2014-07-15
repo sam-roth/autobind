@@ -6,6 +6,7 @@
 #include "util.hpp"
 #include "Type.hpp"
 #include "exports/Func.hpp"
+#include "exports/Class.hpp"
 
 #include <clang/Sema/Sema.h>
 #include <unordered_set>
@@ -181,118 +182,12 @@ public:
 
 	void handleExportRecordDecl(clang::CXXRecordDecl *decl)
 	{
-		using namespace streams;
+// 		using namespace streams;
 
-		_knownTypes.insert(decl->getTypeForDecl());  // we'll generate a conversion function later
+		auto klass = ::autobind::make_unique<Class>(*decl);
+		klass->setModuleName(_modstack.back()->name());
+		_modstack.back()->addExport(std::move(klass));
 
-		auto name = decl->getQualifiedNameAsString();
-		auto unqualName = rsplit(name, "::").second;
-
-		std::string docstring;
-
-		if(auto comment = decl->getASTContext().getRawCommentForAnyRedecl(decl))
-		{
-			if(comment->isDocumentation())
-			{
-				docstring = comment->getRawText(decl->getASTContext().getSourceManager());
-			}
-		}
-
-		auto ty = ::autobind::make_unique<Type>(unqualName, name, docstring);
-
-
-		bool foundConstructor = false;
-
-		if(decl->hasTrivialCopyConstructor() || decl->hasNonTrivialCopyConstructor())
-		{
-			ty->setCopyAvailable();
-		}
-
-
-		std::set<const clang::CXXMethodDecl *> found;
-
-		auto addMethod = [&](clang::CXXMethodDecl *md) {
-			for(auto overriden : stream(md->begin_overridden_methods(),
-			                            md->end_overridden_methods()))
-			{
-				found.erase(overriden);
-			}
-			if(!isPyNoExport(md))
-			{
-				found.insert(md);
-			}
-		};
-
-		for(const auto &base : stream(decl->bases_begin(),
-		                              decl->bases_end()))
-		{
-			if(base.getAccessSpecifier() != clang::AS_public) continue;
-
-			auto record = base.getType()->getAsCXXRecordDecl();
-			if(!record) continue;
-
-			for(auto field : stream(record->decls_begin(),
-			                        record->decls_end()))
-			{
-				if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field)
-				   || llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field)) continue;
-
-				if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
-				{
-
-					if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public
-					   && !method->isTemplateDecl())
-					{
-						addMethod(method);
-					}
-				}
-			}
-
-		}
-
-
-		for(auto field : stream(decl->decls_begin(), decl->decls_end()))
-		{
-
-			if(auto constructor = llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field))
-			{
-				if(!foundConstructor && !constructor->isCopyOrMoveConstructor()
-				   && !isPyNoExport(constructor))
-				{
-					foundConstructor = true;
-					auto cdata = _wrapperEmitter.function(constructor);
-					cdata->setReturnType("void"); // prevents attempting to convert result type
-					ty->setConstructor(std::move(cdata));
-				}
-				else if(constructor->isCopyConstructor())
-				{
-					ty->setCopyAvailable();
-				}
-			}
-			else if(llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field))
-			{
-				// ignore -- don't bind destructors
-			}
-			else if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
-			{
-				if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public
-				   && !method->isTemplateDecl())
-				{
-					addMethod(method);
-				}
-			}
-		}
-
-		for(auto method : found)
-		{
-			validateExportedFunctionDecl(method);
-			auto mdata = _wrapperEmitter.method(const_cast<clang::CXXMethodDecl *>(method));
-			ty->addMethod(std::move(mdata));
-		}
-
-
-
-		_modstack.back()->addExport(std::move(ty));
 	}
 
 

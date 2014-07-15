@@ -13,13 +13,14 @@
 namespace clang { class CXXConstructorDecl; }
 
 namespace autobind {
-	
+
 class Func;
 class Class: public Export
 {
 	const clang::CXXRecordDecl &_decl;
 	const clang::CXXConstructorDecl *_constructor = nullptr;
 	std::string _selfTypeRef;
+	std::string _moduleName;
 
 	std::vector<std::unique_ptr<Func>> _functions;
 public:
@@ -28,10 +29,12 @@ public:
 	const std::vector<std::unique_ptr<Func>> &functions() const { return _functions; }
 	const std::string &selfTypeRef() const { return _selfTypeRef; }
 
+	void setModuleName(const std::string &moduleName) { _moduleName = moduleName; }
+
 	virtual void codegenDeclaration(std::ostream &) const override;
 	virtual void codegenDefinition(std::ostream &) const override;
 	virtual void codegenMethodTable(std::ostream &) const override;
-
+	virtual void codegenInit(std::ostream &) const override;
 	virtual void merge(const Export &e) override;
 };
 

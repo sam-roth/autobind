@@ -45,7 +45,7 @@ void Func::codegenDefinition(std::ostream &out) const
 	// FIXME: should clear error after failed overload
 
 	const char *prefix = _selfTypeRef == "PyObject"? "" : "self->object.";
-	
+
 	codegenPrototype(out);
 	out << "\n{\n";
 	{
@@ -82,7 +82,6 @@ void Func::codegenMethodTable(std::ostream &out) const
 		}
 	}
 
-	// TODO: docstrings
 	out << "{"
 		<< "\"" << name() << "\", "
 		<< "(PyCFunction) &" << _implRef << ", METH_VARARGS | METH_KEYWORDS, "
