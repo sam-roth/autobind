@@ -16,7 +16,7 @@
 #include <map>
 #include <typeinfo>
 
-#include "optional.hpp"
+#include "autobind/optional.hpp"
 
 #define AB_PRIVATE_ANNOTATE(a...)        __attribute__((annotate(a)))
 #define AB_PRIVATE_TU_ANNOTATE(a...)     namespace AB_PRIVATE_ANNOTATE(a) { }
