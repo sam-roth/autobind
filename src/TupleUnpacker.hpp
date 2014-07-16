@@ -1,3 +1,8 @@
+// Copyright (c) 2014, Samuel A. Roth. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can
+// be found in the COPYING file.
+
 #ifndef TUPLEUNPACKER_HPP_8BN4HT
 #define TUPLEUNPACKER_HPP_8BN4HT
 #include <string>

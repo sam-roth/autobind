@@ -7,10 +7,15 @@
 #define CLASS_HPP_TDTVVJ
 
 #include <vector>
+#include <map>
 #include <memory>
 #include "../Export.hpp"
 
-namespace clang { class CXXConstructorDecl; }
+namespace clang 
+{ 
+	class CXXConstructorDecl;
+	class CXXMethodDecl;
+}
 
 namespace autobind {
 
@@ -22,7 +27,20 @@ class Class: public Export
 	std::string _selfTypeRef;
 	std::string _moduleName;
 
+	struct Accessor
+	{
+		const clang::CXXMethodDecl *getter=nullptr, *setter=nullptr;
+		mutable std::string getterRef = "0", setterRef = "0";
+
+		std::string escapedDocstring() const;
+		void codegenDeclaration(const Class &parent, std::ostream &out) const;
+		void codegen(const Class &parent, std::ostream &out) const;
+	};
+
+
+	std::map<std::string, Accessor> _accessors;
 	std::vector<std::unique_ptr<Func>> _functions;
+
 public:
 	Class(const clang::CXXRecordDecl &decl);
 

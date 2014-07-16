@@ -1,4 +1,7 @@
-
+// Copyright (c) 2014, Samuel A. Roth. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can
+// be found in the COPYING file.
 
 #include "DiscoveryVisitor.hpp"
 #include "DataExtractor.hpp"
@@ -7,6 +10,7 @@
 #include "Type.hpp"
 #include "exports/Func.hpp"
 #include "exports/Class.hpp"
+#include "attributeStream.hpp"
 
 #include <clang/Sema/Sema.h>
 #include <unordered_set>
@@ -37,27 +41,6 @@ std::string prototypeSpelling(clang::FunctionDecl *decl)
 	result += ")";
 
 	return result;
-}
-
-
-AB_RETURN_AUTO(attributeStream(clang::Decl &x),
-               streams::stream(x.specific_attr_begin<clang::AnnotateAttr>(),
-                               x.specific_attr_end<clang::AnnotateAttr>()))
-
-bool isPyExport(clang::Decl *d)
-{
-	using namespace streams;
-
-	auto pred = [](const clang::AnnotateAttr *a) { return a->getAnnotation() == "pyexport"; };
-	return any(attributeStream(*d) | transformed(pred));
-}
-
-bool isPyNoExport(clang::Decl *d)
-{
-	using namespace streams;
-
-	auto pred = [](const clang::AnnotateAttr *a) { return a->getAnnotation() == "pynoexport"; };
-	return any(attributeStream(*d) | transformed(pred));
 }
 
 template <class Decl, class Func>

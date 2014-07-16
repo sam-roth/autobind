@@ -92,6 +92,11 @@ void CallGenerator::codegenSuccess(std::ostream &out) const
 {
 	out << "PyErr_Clear();\n";
 
+	auto ty = _decl->getResultType().getNonReferenceType();
+	ty.removeLocalConst();
+	ty.removeLocalVolatile();
+	ty.removeLocalRestrict();
+	
 	if(_decl->getResultType()->isVoidType())
 	{
 		out << "Py_RETURN_NONE;\n";
@@ -99,7 +104,7 @@ void CallGenerator::codegenSuccess(std::ostream &out) const
 	else
 	{
 		out << "return ::python::Conversion<"
-			<< _decl->getResultType().getAsString()
+			<< ty.getAsString()
 			<< ">::dump(result);";
 	}
 }

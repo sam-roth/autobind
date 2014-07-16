@@ -12,8 +12,147 @@
 #include "../printing.hpp"
 #include "../StringTemplate.hpp"
 #include "../TupleUnpacker.hpp"
+#include "../attributeStream.hpp"
 
 namespace autobind {
+
+std::string Class::Accessor::escapedDocstring() const
+{
+	std::string result;
+	if(getter)
+	{
+		result += findDocumentationComments(*getter);
+	}
+
+	if(setter)
+	{
+		if(getter) result += "\n\n";
+
+		result += findDocumentationComments(*setter);
+	}
+
+	return processDocString(result);
+}
+
+void Class::Accessor::codegenDeclaration(const autobind::Class &parent, 
+                                         std::ostream &out) const
+{
+	if(getter)
+	{
+		getterRef = gensym(parent._selfTypeRef + "_" + getter->getNameAsString());
+		static const StringTemplate tpl = R"EOF(
+		static PyObject *{{implName}}({{selfTypeName}} *self, void */*closure*/);
+		)EOF";
+
+		tpl.into(out)
+			.set("implName", getterRef)
+			.set("selfTypeName", parent._selfTypeRef)
+			.expand();
+	}
+
+	if(setter)
+	{
+		static const StringTemplate tpl = R"EOF(
+		static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure);
+		)EOF";
+
+		setterRef = gensym(parent._selfTypeRef + "_" + setter->getNameAsString());
+		tpl.into(out)
+			.set("implName", setterRef)
+			.set("selfTypeName", parent._selfTypeRef)
+			.expand();
+	}
+}
+
+
+void Class::Accessor::codegen(const Class &parent, std::ostream &out) const
+{
+	if(getter)
+	{
+
+		static const StringTemplate tpl = R"EOF(
+		static PyObject *{{implName}}({{selfTypeName}} *self, void */*closure*/)
+		{
+			try
+			{
+				PyObject *result = ::python::Conversion<{{type}}>::dump(self->object.{{func}}());
+				PyErr_Clear();
+				return result;
+			}
+			catch(::python::Exception &exc)
+			{
+				return 0;
+			}
+			catch(::std::exception &exc)
+			{
+				PyErr_SetString(PyExc_RuntimeError, exc.what());
+				return 0;
+			}
+		}
+		)EOF";
+
+
+		auto ty = getter->getResultType().getNonReferenceType();
+		ty.removeLocalConst();
+		ty.removeLocalRestrict();
+		ty.removeLocalVolatile();
+		
+		tpl.into(out)
+			.set("implName", getterRef)
+			.set("selfTypeName", parent._selfTypeRef)
+			.set("type", ty.getCanonicalType().getAsString())
+			.set("func", getter->getNameAsString())
+			.expand();
+
+	}
+
+	if(setter)
+	{
+		static const StringTemplate tpl = R"EOF(
+		static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure)
+		{
+			if(!value)
+			{
+				PyErr_SetString(PyExc_TypeError, "Cannot delete attribute.");
+				return -1;
+			}
+
+			try
+			{
+				self->object.{{func}}(::python::Conversion<{{type}}>::load(value));
+				PyErr_Clear();
+				return 0;
+			}
+			catch(::python::Exception &exc)
+			{
+				return -1;
+			}
+			catch(::std::exception &exc)
+			{
+				PyErr_SetString(PyExc_RuntimeError, exc.what());
+				return -1;
+			}
+		}
+		)EOF";
+
+		// TODO: show diagnostic
+		assert(setter->param_size() == 1);
+
+		auto ty = (**setter->param_begin()).getType().getNonReferenceType();
+		ty.removeLocalConst();
+		ty.removeLocalRestrict();
+		ty.removeLocalVolatile();
+
+		tpl.into(out)
+			.set("implName", setterRef)
+			.set("selfTypeName", parent._selfTypeRef)
+			.set("type", ty.getCanonicalType().getAsString())
+			.set("func", setter->getNameAsString())
+			.expand();
+
+	}
+}
+
 
 Class::Class(const clang::CXXRecordDecl &decl)
 : Export(decl.getNameAsString())
@@ -21,6 +160,7 @@ Class::Class(const clang::CXXRecordDecl &decl)
 , _selfTypeRef(gensym(decl.getNameAsString()))
 {
 	std::unordered_map<std::string, std::unique_ptr<Func>> functions;
+	using namespace streams;
 
 	for(auto it = decl.method_begin(), end = decl.method_end(); it != end; ++it)
 	{
@@ -38,18 +178,46 @@ Class::Class(const clang::CXXRecordDecl &decl)
 		{
 			// TODO:
 		}
-		else if(!it->isStatic() && it->getAccess() == clang::AS_public)
+		else if(!it->isStatic() 
+		        && it->getAccess() == clang::AS_public 
+		        && !it->isOverloadedOperator())
 		{
 			auto name = it->getNameAsString();
-			auto &decl = functions[name];
-			if(!decl)
+
+			bool omit = false;
+
+			for(auto attr : attributeStream(**it))
 			{
-				decl.reset(new Func(name));
+				auto annot = attr->getAnnotation();
+				if(annot.startswith("pygetter:"))
+				{
+					it->dumpColor();
+					auto &accessor = _accessors[annot.split(':').second];
+					accessor.getter = *it;
+					omit = true;
+					break;
+				}
+				else if(annot.startswith("pysetter:"))
+				{
+					auto &accessor = _accessors[annot.split(':').second];
+					accessor.setter = *it;
+					omit = true;
+					break;
+				}
 			}
 
-			decl->addDecl(**it);
-			decl->setSelfTypeRef(_selfTypeRef);
+			if(!omit)
+			{
+				auto &decl = functions[name];
+				if(!decl)
+				{
+					decl.reset(new Func(name));
+				}
+				decl->addDecl(**it);
+				decl->setSelfTypeRef(_selfTypeRef);
+			}
 		}
+
 	}
 
 	for(auto &pair : functions)
@@ -81,6 +249,12 @@ void Class::codegenDeclaration(std::ostream &out) const
 	{
 		func->codegenDeclaration(out);
 	}
+
+	for(const auto &accessor : _accessors)
+	{
+		accessor.second.codegenDeclaration(*this, out);
+	}
+
 	// TODO: handle noncopyable types
 	static const StringTemplate converterTemplate = R"EOF(
 	template <>
@@ -197,7 +371,15 @@ void Class::codegenDefinition(std::ostream &out) const
 				func->codegenMethodTable(out);
 			}
 		})
-		.set("getSetTable", "") // TODO: implement getters/setters
+		.setFunc("getSetTable", [&](std::ostream &out) { 
+			for(const auto &pair : _accessors)
+			{
+				out << "{(char *)\"" << pair.first << "\", "
+					<< "(getter) " << pair.second.getterRef << ", "
+					<< "(setter) " << pair.second.setterRef << ", "
+					<< "(char *)\"" << pair.second.escapedDocstring() << "\"},\n";
+			}
+		})
 		.expand();
 
 	for(const auto &func : _functions)
@@ -260,7 +442,10 @@ void Class::codegenDefinition(std::ostream &out) const
 		.set("docstring", processDocString(findDocumentationComments(_decl)))
 		.expand();
 
-
+	for(const auto &accessor : _accessors)
+	{
+		accessor.second.codegen(*this, out);
+	}
 	// TODO: handle noncopyables
 
 	static const StringTemplate conversionImplTemplate = R"EOF(
@@ -304,16 +489,16 @@ void Class::codegenDefinition(std::ostream &out) const
 				throw std::runtime_error("Expected an instance of {{typeName}}.");
 			}
 		}
-		)EOF";
+	)EOF";
 
-	
-		conversionImplTemplate.into(out)
-			.set("structName", _selfTypeRef)
-			.set("moduleName", _moduleName)
-			.set("name", name())
-			.set("cppName", _decl.getQualifiedNameAsString())
-			.set("typeName", _decl.getQualifiedNameAsString())
-			.expand();
+
+	conversionImplTemplate.into(out)
+		.set("structName", _selfTypeRef)
+		.set("moduleName", _moduleName)
+		.set("name", name())
+		.set("cppName", _decl.getQualifiedNameAsString())
+		.set("typeName", _decl.getQualifiedNameAsString())
+		.expand();
 
 }
 
