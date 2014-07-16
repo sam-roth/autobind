@@ -42,10 +42,7 @@ add_library(
 	src/exports/Func.cpp
 	src/exports/Class.cpp
 	src/CallGenerator.cpp
-	src/Function.cpp
 	src/DiscoveryVisitor.cpp
-	src/Type.cpp
-	src/Getter.cpp
 	src/util.cpp
 	src/Module.cpp
 	src/TupleUnpacker.cpp

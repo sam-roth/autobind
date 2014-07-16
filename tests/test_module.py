@@ -74,3 +74,7 @@ def test_class_docstring():
 	assert module.DocstringTest3.docstring_test_4.__doc__.strip() == (
 		'(i: int) -> int\ndocstring test 4')
 
+def test_using():
+	assert module.double_number(1) == 2
+	assert module.TestUsing() is not None
+

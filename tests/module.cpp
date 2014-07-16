@@ -85,3 +85,13 @@ struct pyexport DocstringTest3
 	/// docstring test 4
 	int docstring_test_4(int i) { return 0; }
 };
+
+int double_number(int x) { return x * 2; }
+struct TestUsing { };
+namespace pyexport
+{
+	using ::double_number;
+	using ::TestUsing;
+}
+
+

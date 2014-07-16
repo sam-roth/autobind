@@ -191,7 +191,6 @@ Class::Class(const clang::CXXRecordDecl &decl)
 				auto annot = attr->getAnnotation();
 				if(annot.startswith("pygetter:"))
 				{
-					it->dumpColor();
 					auto &accessor = _accessors[annot.split(':').second];
 					accessor.getter = *it;
 					omit = true;

@@ -4,10 +4,8 @@
 // be found in the COPYING file.
 
 #include "DiscoveryVisitor.hpp"
-#include "DataExtractor.hpp"
 
 #include "util.hpp"
-#include "Type.hpp"
 #include "exports/Func.hpp"
 #include "exports/Class.hpp"
 #include "attributeStream.hpp"
@@ -63,7 +61,6 @@ bool errorToDiag(Decl decl, const Func &func) {
 class DiscoveryVisitor
 : public clang::RecursiveASTVisitor<DiscoveryVisitor>
 {
-	DataExtractor _wrapperEmitter;
 	bool _foundModule = false;
 	std::vector<clang::FunctionDecl *> _matches;
 	autobind::ModuleManager &_modmgr;
@@ -78,8 +75,7 @@ public:
 	explicit DiscoveryVisitor(clang::ASTContext *context, 
 	                          autobind::ModuleManager &modmgr,
 	                          clang::CompilerInstance &compiler)
-	: _wrapperEmitter(context)
-	, _modmgr(modmgr)
+	: _modmgr(modmgr)
 	, _compiler(compiler)
 	{
 		assert(_compiler.hasSema());
@@ -113,7 +109,7 @@ public:
 	void validateExportedFunctionDecl(const clang::FunctionDecl *func)
 	{
 		// TODO: defer this until after visiting the entire TU
-
+		
 #if 0
 		using namespace streams;
 		for(auto param : stream(func->param_begin(),
@@ -193,7 +189,9 @@ public:
 				}
 				else if(auto funcDecl = llvm::dyn_cast_or_null<clang::FunctionDecl>(target))
 				{
-					_modstack.back()->addExport(_wrapperEmitter.function(funcDecl));
+					auto func = ::autobind::make_unique<Func>(decl->getNameAsString());
+					func->addDecl(*funcDecl);
+					_modstack.back()->addExport(std::move(func));
 				}
 			}
         });
@@ -311,7 +309,6 @@ public:
 			auto func = ::autobind::make_unique<Func>(decl->getNameAsString());
 			func->addDecl(*decl);
 			_modstack.back()->addExport(std::move(func));
-// 			_modstack.back()->addExport(_wrapperEmitter.function(decl));
         });
 	}
 
