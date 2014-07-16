@@ -13,6 +13,7 @@
 #include "../StringTemplate.hpp"
 #include "../TupleUnpacker.hpp"
 #include "../attributeStream.hpp"
+#include "../diagnostics.hpp"
 
 namespace autobind {
 
@@ -91,12 +92,19 @@ void Class::Accessor::codegen(const Class &parent, std::ostream &out) const
 		}
 		)EOF";
 
+		if(getter->param_size() != 0)
+			diag::stop(**getter->param_begin(), "getter must have no parameters");
 
+		if(getter->getResultType()->isVoidType())
+			diag::stop(*getter, "getter must not return `void`.");
+			
 		auto ty = getter->getResultType().getNonReferenceType();
 		ty.removeLocalConst();
 		ty.removeLocalRestrict();
 		ty.removeLocalVolatile();
-		
+
+
+
 		tpl.into(out)
 			.set("implName", getterRef)
 			.set("selfTypeName", parent._selfTypeRef)
@@ -135,8 +143,8 @@ void Class::Accessor::codegen(const Class &parent, std::ostream &out) const
 		}
 		)EOF";
 
-		// TODO: show diagnostic
-		assert(setter->param_size() == 1);
+		if(setter->param_size() != 1)
+			diag::stop(*setter, "setter must have exactly one parameter");
 
 		auto ty = (**setter->param_begin()).getType().getNonReferenceType();
 		ty.removeLocalConst();

@@ -46,6 +46,7 @@ add_library(
 	src/util.cpp
 	src/Module.cpp
 	src/TupleUnpacker.cpp
+	src/diagnostics.cpp
 )
 
 target_link_libraries(

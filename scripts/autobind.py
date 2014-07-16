@@ -82,6 +82,8 @@ def get_autobind_flags(source):
     return get_cc1_flags(CXXFLAGS + get_python_cflags() + ['-DAUTOBIND_RUN']
                          + ['-c', source])
 
+class BindingGenerationFailedError(RuntimeError):
+    pass
 
 def run_autobind(source):
     source = os.path.abspath(source)
@@ -90,7 +92,8 @@ def run_autobind(source):
     with subprocess.Popen([AB, source, '--'] + flags,
                           stdout=subprocess.PIPE) as proc:
         stdout, _ = proc.communicate()
-
+        if proc.returncode != 0:
+            raise BindingGenerationFailedError('Binding generation failed.')
         return stdout.decode()
 
 
@@ -127,9 +130,12 @@ def main():
 
         with tempfile.NamedTemporaryFile('w', dir=os.path.dirname(main_file), suffix='.cpp') as f:
             CXXFLAGS += args.cxxflags
-            f.write(run_autobind(main_file))
+            try:
+                f.write(run_autobind(main_file))
+            except BindingGenerationFailedError:
+                sys.exit(1)
             f.flush()
-            
+
             stem, ext = os.path.splitext(os.path.basename(main_file))
 
             lib_suffix = sysconfig.get_config_var('EXT_SUFFIX')
@@ -176,14 +182,6 @@ def main():
         show_help(args)
 
 
-
-#
-#     args = ap.parse_args()
-# 
-#     with args.o:
-#         CXXFLAGS += args.cxxflags
-#         args.o.write(run_autobind(args.c))
-# 
 
 
 if __name__ == '__main__':

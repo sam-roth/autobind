@@ -1,3 +1,7 @@
+// Copyright (c) 2014, Samuel A. Roth. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can
+// be found in the COPYING file.
 
 #include <iostream>
 #include <utility>
@@ -24,6 +28,7 @@
 #include "DiscoveryVisitor.hpp"
 
 #include "util.hpp"
+#include "diagnostics.hpp"
 #include "Export.hpp"
 
 namespace autobind {
@@ -110,7 +115,14 @@ public:
 				mgr.module(item.first).setSourceTUPath(inFile);
 			}
 
-			mgr.codegen(std::cout);
+			try
+			{
+				mgr.codegen(std::cout);
+			}
+			catch(DiagnosticError &e)
+			{
+				// already presented error, so eat the exception
+			}
 		});
 	}
 };
