@@ -41,6 +41,7 @@ add_library(
 
 	src/exports/Func.cpp
 	src/exports/Class.cpp
+	src/ClassData.cpp
 	src/CallGenerator.cpp
 	src/DiscoveryVisitor.cpp
 	src/util.cpp

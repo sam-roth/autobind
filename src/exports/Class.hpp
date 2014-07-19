@@ -11,6 +11,7 @@
 #include <memory>
 #include "../Export.hpp"
 #include "Func.hpp"
+#include "../ClassData.hpp"
 
 namespace clang 
 { 
@@ -27,7 +28,7 @@ class Class: public Export
 	const clang::CXXRecordDecl &_decl;
 	std::string _selfTypeRef;
 	std::string _moduleName;
-	
+
 	struct Accessor
 	{
 		const clang::CXXMethodDecl *getter=nullptr, *setter=nullptr;
@@ -38,6 +39,7 @@ class Class: public Export
 		void codegen(const Class &parent, std::ostream &out) const;
 	};
 
+	ClassData _classData;
 	Constructor _constructor;
 	std::map<std::string, Accessor> _accessors;
 	std::vector<std::unique_ptr<Func>> _functions;
@@ -45,6 +47,7 @@ class Class: public Export
 public:
 	Class(const clang::CXXRecordDecl &decl);
 
+	const ClassData &classData() const { return _classData; }
 	const std::vector<std::unique_ptr<Func>> &functions() const { return _functions; }
 	const std::string &selfTypeRef() const { return _selfTypeRef; }
 

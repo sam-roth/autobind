@@ -1,3 +1,7 @@
+// Copyright (c) 2014, Samuel A. Roth. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can
+// be found in the COPYING file.
 
 #include <clang/AST/DeclCXX.h>
 
@@ -6,7 +10,7 @@
 #include "../printing.hpp"
 #include "../CallGenerator.hpp"
 #include "../StringTemplate.hpp"
-
+#include "../ClassData.hpp"
 
 namespace autobind {
 
@@ -97,6 +101,15 @@ void Func::codegenMethodTable(std::ostream &out) const
 		<< "\"" << docstringEscaped << "\""
 		<< "},\n";
 }
+
+Constructor::Constructor(const autobind::ClassData &classData)
+: Export(classData.exportName())
+, Func(classData.exportName())
+, ClassExport(classData.exportName(), classData)
+{
+	setSelfTypeRef(classData.wrapperRef());
+}
+
 void Constructor::codegenPrototype(std::ostream &out) const
 {
 	out << "PyObject *" << implRef() << "(PyTypeObject *ty, PyObject *args, PyObject *kwargs)";
@@ -149,7 +162,7 @@ void Constructor::codegenOverloadOrDefault(std::ostream &out, int n) const
 	top.into(out)
 		.setFunc("unpackTuple", method(unpacker, &TupleUnpacker::codegen))
 		.set("unpackOk", unpacker.okRef())
-		.set("wrappedType", name())
+		.set("wrappedType", classData().typeRef())
 		.set("callArgs", streams::cat(streams::stream(unpacker.elementRefs()).interpose(", ")))
 		.expand();
 }
@@ -165,7 +178,7 @@ void Constructor::beforeOverloads(std::ostream &out) const
 		.set("structName", selfTypeRef())
 		.expand();
 
-	if(_defaultConstructible)
+	if(classData().isDefaultConstructible())
 	{
 		codegenOverloadOrDefault(out, -1);
 	}

@@ -165,16 +165,14 @@ void Class::Accessor::codegen(const Class &parent, std::ostream &out) const
 Class::Class(const clang::CXXRecordDecl &decl)
 : Export(decl.getNameAsString())
 , _decl(decl)
-, _selfTypeRef(gensym(decl.getNameAsString()))
-, _constructor(decl.getQualifiedNameAsString())
+, _classData(decl)
+, _constructor(_classData)
 {
+	_selfTypeRef = _classData.wrapperRef();
+	
 	std::unordered_map<std::string, std::unique_ptr<Func>> functions;
 	using namespace streams;
 	_constructor.setSelfTypeRef(_selfTypeRef);
-	if(decl.hasDefaultConstructor())
-	{
-		_constructor.setDefaultConstructible();
-	}
 	for(auto it = decl.method_begin(), end = decl.method_end(); it != end; ++it)
 	{
 		auto kind = it->getKind();

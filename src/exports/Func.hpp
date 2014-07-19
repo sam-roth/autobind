@@ -1,4 +1,7 @@
-
+// Copyright (c) 2014, Samuel A. Roth. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can
+// be found in the COPYING file.
 
 #ifndef FUNC_HPP_2Q8A6A
 #define FUNC_HPP_2Q8A6A
@@ -7,10 +10,11 @@
 #include <clang/AST/Decl.h>
 
 #include "../Export.hpp"
+#include "ClassExport.hpp"
 
 namespace autobind {
 
-class Func: public Export
+class Func: public virtual Export
 {
 	std::vector<const clang::FunctionDecl *> _decls;
 	std::string _implRef;
@@ -56,24 +60,19 @@ public:
 };
 
 
-
-class Constructor: public Func
+// TODO: move this to another file
+class Constructor: public virtual Func, public virtual ClassExport
 {
-	bool _defaultConstructible = false;
 	void codegenOverloadOrDefault(std::ostream &, int) const;
 public:
-	Constructor(std::string name)
-	: Func(name) { }
+	Constructor(const ClassData &classData);
 
-	void setDefaultConstructible()
-	{
-		_defaultConstructible = true;
-	}
 protected:
 	virtual void codegenPrototype(std::ostream &) const;
 	virtual void codegenOverload(std::ostream &, size_t) const;
 	virtual void beforeOverloads(std::ostream &) const;
 };
+
 
 
 } // autobind
