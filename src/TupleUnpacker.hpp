@@ -10,7 +10,7 @@
 #include "util.hpp"
 namespace autobind {
 
-/// Generates code for unpacking a Python tuple.
+/// Generates code for unpacking a Python argument tuple.
 class TupleUnpacker
 {
 	struct StorageElt
@@ -27,6 +27,8 @@ class TupleUnpacker
 	std::vector<std::string> _elementRefs;
 	std::vector<std::string> _argNames;
 public:
+	/// Initialize the TupleUnpacker given the names of the variables containing
+	/// args and kwargs.
 	TupleUnpacker(std::string argsRef,
 	              std::string kwargsRef)
 	: _argsRef(std::move(argsRef))
@@ -35,6 +37,8 @@ public:
 	{ }
 
 
+	/// Add a variable declaration to the list of values to be unpacked from the tuple.
+	/// (The type and name of the variable declaration will be used.)
 	void addElement(const clang::VarDecl &decl);
 
 	/// Get expressions that will refer to the unpacked elements of the tuple.

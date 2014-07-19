@@ -405,7 +405,7 @@ namespace python
 			}
 		}
 
-		bool operator ==(const ObjectRef &other)
+		bool operator ==(const ObjectRef &other) const
 		{
 			int rv = PyObject_RichCompareBool(_obj.get(), other._obj.get(), Py_EQ);
 			if(rv < 0)
@@ -557,7 +557,7 @@ namespace python
 	{
 		return o.isinstance(ty);
 	}
-
+	
 	inline bool issubclass(const ObjectRef &derived, const ObjectRef &base)
 	{
 		return derived.issubclass(base);
