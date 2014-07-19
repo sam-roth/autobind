@@ -1,3 +1,4 @@
+// This file should compile successfully.
 
 #include <autobind.hpp>
 
@@ -42,7 +43,6 @@ struct pyexport AllocCheck
 	AllocCheck()
 	{
 		++allocs;
-
 	}
 
 	AllocCheck(const AllocCheck &)
@@ -94,4 +94,9 @@ namespace pyexport
 	using ::TestUsing;
 }
 
+
+pyexport std::string overload() { return ""; }
+pyexport std::string overload(int) { return "int"; }
+pyexport std::string overload(const std::string &) { return "std::string"; }
+pyexport std::string overload(int, int) { return "int, int"; }
 

@@ -78,3 +78,15 @@ def test_using():
 	assert module.double_number(1) == 2
 	assert module.TestUsing() is not None
 
+def test_overload():
+	# pyexport std::string overload() { return ""; }
+	assert module.overload() == ''
+	# pyexport std::string overload(int) { return "int"; }
+	assert module.overload(1) == 'int'
+	# pyexport std::string overload(const std::string &) { return "std::string"; }
+	assert module.overload('') == 'std::string'
+	# pyexport std::string overload(int, int) { return "int, int"; }
+	assert module.overload(1, 1) == 'int, int'
+
+
+
