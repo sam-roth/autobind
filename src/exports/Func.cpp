@@ -11,6 +11,7 @@
 #include "../CallGenerator.hpp"
 #include "../StringTemplate.hpp"
 #include "../ClassData.hpp"
+#include "../diagnostics.hpp"
 
 namespace autobind {
 
@@ -182,6 +183,179 @@ void Constructor::beforeOverloads(std::ostream &out) const
 	{
 		codegenOverloadOrDefault(out, -1);
 	}
+}
+
+Descriptor::Descriptor(const std::string &name, 
+                       const autobind::ClassData &classData)
+: Export(name)
+, ClassExport(name, classData)
+{ }
+
+void Descriptor::merge(const autobind::Export &exp)
+{
+	if(auto that = dynamic_cast<const Descriptor *>(&exp))
+	{
+		if(that->_getter) _getter = that->_getter;
+		if(that->_setter) _setter = that->_setter;
+	}
+	else
+	{
+		ClassExport::merge(exp);
+	}
+}
+
+void Descriptor::codegenDeclaration(std::ostream &out) const
+{
+	if(_getter)
+	{
+		_getterRef = gensym(classData().wrapperRef() + "_" + _getter->getNameAsString());
+		static const StringTemplate tpl = R"EOF(
+		static PyObject *{{implName}}({{selfTypeName}} *self, void */*closure*/);
+		)EOF";
+
+		tpl.into(out)
+			.set("implName", _getterRef)
+			.set("selfTypeName", classData().wrapperRef())
+			.expand();
+	}
+
+	if(_setter)
+	{
+		static const StringTemplate tpl = R"EOF(
+		static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure);
+		)EOF";
+
+		_setterRef = gensym(classData().wrapperRef() + "_" + _setter->getNameAsString());
+		tpl.into(out)
+			.set("implName", _setterRef)
+			.set("selfTypeName", classData().wrapperRef())
+			.expand();
+	}
+}
+
+
+
+void Descriptor::codegenDefinition(std::ostream &out) const
+{
+	if(_getter)
+	{
+		static const StringTemplate tpl = R"EOF(		
+		static PyObject *{{implName}}({{selfTypeName}} *self, void */*closure*/)
+		{
+			try
+			{
+				PyObject *result = ::python::Conversion<{{type}}>::dump(self->object.{{func}}());
+				PyErr_Clear();
+				return result;
+			}
+			catch(::python::Exception &exc)
+			{
+				return 0;
+			}
+			catch(::std::exception &exc)
+			{
+				PyErr_SetString(PyExc_RuntimeError, exc.what());
+				return 0;
+			}
+		}
+		)EOF";
+
+		if(_getter->param_size() != 0)
+			diag::stop(**_getter->param_begin(), "getter must have no parameters");
+
+		if(_getter->getResultType()->isVoidType())
+			diag::stop(*_getter, "getter must not return `void`.");
+
+		auto ty = _getter->getResultType().getNonReferenceType();
+		ty.removeLocalConst();
+		ty.removeLocalRestrict();
+		ty.removeLocalVolatile();
+
+		tpl.into(out)
+			.set("implName", _getterRef)
+			.set("selfTypeName", classData().wrapperRef())
+			.set("type", ty.getCanonicalType().getAsString())
+			.set("func", _getter->getQualifiedNameAsString())
+			.expand();
+	}
+
+	if(_setter)
+	{
+		static const StringTemplate tpl = R"EOF(
+		static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure)
+		{
+			if(!value)
+			{
+				PyErr_SetString(PyExc_TypeError, "Cannot delete attribute.");
+				return -1;
+			}
+
+			try
+			{
+				self->object.{{func}}(::python::Conversion<{{type}}>::load(value));
+				PyErr_Clear();
+				return 0;
+			}
+			catch(::python::Exception &exc)
+			{
+				return -1;
+			}
+			catch(::std::exception &exc)
+			{
+				PyErr_SetString(PyExc_RuntimeError, exc.what());
+				return -1;
+			}
+		}
+		)EOF";
+
+		if(_setter->param_size() != 1)
+			diag::stop(*_setter, "setter must have exactly one parameter");
+
+		auto ty = (**_setter->param_begin()).getType().getNonReferenceType();
+		ty.removeLocalConst();
+		ty.removeLocalRestrict();
+		ty.removeLocalVolatile();
+
+		tpl.into(out)
+			.set("implName", _setterRef)
+			.set("selfTypeName", classData().wrapperRef())
+			.set("type", ty.getCanonicalType().getAsString())
+			.set("func", _setter->getNameAsString())
+			.expand();
+	}
+}
+
+
+void Descriptor::codegenMethodTable(std::ostream &) const
+{
+	// intentionally left blank
+}
+
+std::string Descriptor::escapedDocstring() const
+{
+	std::string result;
+	if(_getter)
+	{
+		result += findDocumentationComments(*_getter);
+	}
+
+	if(_setter)
+	{
+		if(_getter) result += "\n\n";
+
+		result += findDocumentationComments(*_setter);
+	}
+
+	return processDocString(result);
+}
+
+
+void Descriptor::codegenGetSet(std::ostream &out) const
+{
+	out << "{(char *)\"" << name() << "\", "
+		<< "(getter) " << _getterRef << ", "
+		<< "(setter) " << _setterRef << ", "
+		<< "(char *)\"" << escapedDocstring() << "\"},\n";
 }
 
 

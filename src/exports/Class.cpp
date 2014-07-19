@@ -16,152 +16,7 @@
 #include "../diagnostics.hpp"
 
 namespace autobind {
-
-std::string Class::Accessor::escapedDocstring() const
-{
-	std::string result;
-	if(getter)
-	{
-		result += findDocumentationComments(*getter);
-	}
-
-	if(setter)
-	{
-		if(getter) result += "\n\n";
-
-		result += findDocumentationComments(*setter);
-	}
-
-	return processDocString(result);
-}
-
-void Class::Accessor::codegenDeclaration(const autobind::Class &parent, 
-                                         std::ostream &out) const
-{
-	if(getter)
-	{
-		getterRef = gensym(parent._selfTypeRef + "_" + getter->getNameAsString());
-		static const StringTemplate tpl = R"EOF(
-		static PyObject *{{implName}}({{selfTypeName}} *self, void */*closure*/);
-		)EOF";
-
-		tpl.into(out)
-			.set("implName", getterRef)
-			.set("selfTypeName", parent._selfTypeRef)
-			.expand();
-	}
-
-	if(setter)
-	{
-		static const StringTemplate tpl = R"EOF(
-		static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure);
-		)EOF";
-
-		setterRef = gensym(parent._selfTypeRef + "_" + setter->getNameAsString());
-		tpl.into(out)
-			.set("implName", setterRef)
-			.set("selfTypeName", parent._selfTypeRef)
-			.expand();
-	}
-}
-
-
-void Class::Accessor::codegen(const Class &parent, std::ostream &out) const
-{
-	if(getter)
-	{
-
-		static const StringTemplate tpl = R"EOF(
-		static PyObject *{{implName}}({{selfTypeName}} *self, void */*closure*/)
-		{
-			try
-			{
-				PyObject *result = ::python::Conversion<{{type}}>::dump(self->object.{{func}}());
-				PyErr_Clear();
-				return result;
-			}
-			catch(::python::Exception &exc)
-			{
-				return 0;
-			}
-			catch(::std::exception &exc)
-			{
-				PyErr_SetString(PyExc_RuntimeError, exc.what());
-				return 0;
-			}
-		}
-		)EOF";
-
-		if(getter->param_size() != 0)
-			diag::stop(**getter->param_begin(), "getter must have no parameters");
-
-		if(getter->getResultType()->isVoidType())
-			diag::stop(*getter, "getter must not return `void`.");
-
-		auto ty = getter->getResultType().getNonReferenceType();
-		ty.removeLocalConst();
-		ty.removeLocalRestrict();
-		ty.removeLocalVolatile();
-
-
-
-		tpl.into(out)
-			.set("implName", getterRef)
-			.set("selfTypeName", parent._selfTypeRef)
-			.set("type", ty.getCanonicalType().getAsString())
-			.set("func", getter->getNameAsString())
-			.expand();
-
-	}
-
-	if(setter)
-	{
-		static const StringTemplate tpl = R"EOF(
-		static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure)
-		{
-			if(!value)
-			{
-				PyErr_SetString(PyExc_TypeError, "Cannot delete attribute.");
-				return -1;
-			}
-
-			try
-			{
-				self->object.{{func}}(::python::Conversion<{{type}}>::load(value));
-				PyErr_Clear();
-				return 0;
-			}
-			catch(::python::Exception &exc)
-			{
-				return -1;
-			}
-			catch(::std::exception &exc)
-			{
-				PyErr_SetString(PyExc_RuntimeError, exc.what());
-				return -1;
-			}
-		}
-		)EOF";
-
-		if(setter->param_size() != 1)
-			diag::stop(*setter, "setter must have exactly one parameter");
-
-		auto ty = (**setter->param_begin()).getType().getNonReferenceType();
-		ty.removeLocalConst();
-		ty.removeLocalRestrict();
-		ty.removeLocalVolatile();
-
-		tpl.into(out)
-			.set("implName", setterRef)
-			.set("selfTypeName", parent._selfTypeRef)
-			.set("type", ty.getCanonicalType().getAsString())
-			.set("func", setter->getNameAsString())
-			.expand();
-
-	}
-}
-
-
+	
 Class::Class(const clang::CXXRecordDecl &decl)
 : Export(decl.getNameAsString())
 , _decl(decl)
@@ -169,7 +24,7 @@ Class::Class(const clang::CXXRecordDecl &decl)
 , _constructor(_classData)
 {
 	_selfTypeRef = _classData.wrapperRef();
-	
+
 	std::unordered_map<std::string, std::unique_ptr<Func>> functions;
 	using namespace streams;
 	_constructor.setSelfTypeRef(_selfTypeRef);
@@ -202,15 +57,17 @@ Class::Class(const clang::CXXRecordDecl &decl)
 				auto annot = attr->getAnnotation();
 				if(annot.startswith("pygetter:"))
 				{
-					auto &accessor = _accessors[annot.split(':').second];
-					accessor.getter = *it;
+					Descriptor d(annot.split(':').second, classData());
+					d.setGetter(*it);
+					mergeDescriptor(d);
 					omit = true;
 					break;
 				}
 				else if(annot.startswith("pysetter:"))
 				{
-					auto &accessor = _accessors[annot.split(':').second];
-					accessor.setter = *it;
+					Descriptor d(annot.split(':').second, classData());
+					d.setSetter(*it);
+					mergeDescriptor(d);
 					omit = true;
 					break;
 				}
@@ -234,6 +91,17 @@ Class::Class(const clang::CXXRecordDecl &decl)
 	{
 		_functions.push_back(std::move(pair.second));
 	}
+}
+
+void Class::mergeDescriptor(const autobind::Descriptor &d)
+{
+	auto &existing = _descriptors[d.name()];
+	if(!existing)
+	{
+		existing.reset(new Descriptor(d.name(), classData()));
+	}
+
+	existing->merge(d);
 }
 
 
@@ -260,9 +128,9 @@ void Class::codegenDeclaration(std::ostream &out) const
 		func->codegenDeclaration(out);
 	}
 
-	for(const auto &accessor : _accessors)
+	for(const auto &desc : _descriptors)
 	{
-		accessor.second.codegenDeclaration(*this, out);
+		desc.second->codegenDeclaration(out);
 	}
 
 	// TODO: handle noncopyable types
@@ -322,10 +190,6 @@ void Class::codegenDefinition(std::ostream &out) const
 	tpl.into(out)
 		.set("wrappedType", wrappedTypeName)
 		.set("selfTypeRef", _selfTypeRef)
-// 		.setFunc("unpackTuple", method(unpacker, &TupleUnpacker::codegen))
-// 		.set("callArgs", streams::cat(streams::stream(unpacker.elementRefs())
-// 		                              | streams::interposed(", ")))
-// 		.set("unpackOk", unpacker.okRef())
 		.set("destructor", "~" + wrappedTypeName)
 		.setFunc("methodTable", [&](std::ostream &out) {
 			for(const auto &func : _functions)
@@ -334,12 +198,9 @@ void Class::codegenDefinition(std::ostream &out) const
 			}
 		})
 		.setFunc("getSetTable", [&](std::ostream &out) { 
-			for(const auto &pair : _accessors)
+			for(const auto &pair : _descriptors)
 			{
-				out << "{(char *)\"" << pair.first << "\", "
-					<< "(getter) " << pair.second.getterRef << ", "
-					<< "(setter) " << pair.second.setterRef << ", "
-					<< "(char *)\"" << pair.second.escapedDocstring() << "\"},\n";
+				pair.second->codegenGetSet(out);
 			}
 		})
 		.expand();
@@ -406,9 +267,9 @@ void Class::codegenDefinition(std::ostream &out) const
 		.set("constructorRef", _constructor.implRef())
 		.expand();
 
-	for(const auto &accessor : _accessors)
+	for(const auto &pair : _descriptors)
 	{
-		accessor.second.codegen(*this, out);
+		pair.second->codegenDefinition(out);
 	}
 	// TODO: handle noncopyables
 

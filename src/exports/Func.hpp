@@ -74,6 +74,33 @@ protected:
 };
 
 
+class Descriptor: public virtual ClassExport
+{
+	const clang::FunctionDecl *_setter = nullptr, *_getter = nullptr;
+	mutable std::string _getterRef="0", _setterRef="0";
+	std::string escapedDocstring() const;
+public:
+	Descriptor(const std::string &name,
+	           const ClassData &classData);
+
+	void setSetter(clang::FunctionDecl *value)
+	{
+		_setter = value;
+	}
+
+	void setGetter(clang::FunctionDecl *value)
+	{
+		_getter = value;
+	}
+
+	virtual void merge(const Export &e) override;
+
+	virtual void codegenDeclaration(std::ostream &) const override;
+	virtual void codegenDefinition(std::ostream &) const override;
+	virtual void codegenMethodTable(std::ostream &) const override;
+	virtual void codegenGetSet(std::ostream &) const override;
+};
+
 
 } // autobind
 

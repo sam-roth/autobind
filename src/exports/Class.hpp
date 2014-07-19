@@ -28,22 +28,14 @@ class Class: public Export
 	const clang::CXXRecordDecl &_decl;
 	std::string _selfTypeRef;
 	std::string _moduleName;
-
-	struct Accessor
-	{
-		const clang::CXXMethodDecl *getter=nullptr, *setter=nullptr;
-		mutable std::string getterRef = "0", setterRef = "0";
-
-		std::string escapedDocstring() const;
-		void codegenDeclaration(const Class &parent, std::ostream &out) const;
-		void codegen(const Class &parent, std::ostream &out) const;
-	};
-
+	
 	ClassData _classData;
 	Constructor _constructor;
-	std::map<std::string, Accessor> _accessors;
+
+	std::map<std::string, std::unique_ptr<Descriptor>> _descriptors;
 	std::vector<std::unique_ptr<Func>> _functions;
 
+	void mergeDescriptor(const Descriptor &d);
 public:
 	Class(const clang::CXXRecordDecl &decl);
 
