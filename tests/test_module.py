@@ -88,5 +88,8 @@ def test_overload():
 	# pyexport std::string overload(int, int) { return "int, int"; }
 	assert module.overload(1, 1) == 'int, int'
 
-
+def test_constructor_overload():
+	assert module.ConstructorOverload().get() == 0
+	assert module.ConstructorOverload(1).get() == 1
+	assert module.ConstructorOverload(1,1).get() == 2
 

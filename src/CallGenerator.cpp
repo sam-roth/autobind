@@ -52,7 +52,7 @@ void CallGenerator::codegen(std::ostream &out) const
 	{
 		resultDecl = _decl->getResultType().getAsString() + " result = ";
 	}
-	
+
 	top.into(out)
 		.setFunc("unpack", method(_unpacker, &TupleUnpacker::codegen))
 		.set("ok", _unpacker.okRef())

@@ -75,6 +75,17 @@ struct pyexport ThrowCheck
 	}
 };
 
+struct pyexport ConstructorOverload
+{
+	int argCount;
+
+	ConstructorOverload(): argCount(0) { }
+	ConstructorOverload(int): argCount(1) { }
+	ConstructorOverload(int, int): argCount(2) { }
+
+	int get() const { return argCount; }
+};
+
 /// docstring test 1
 pyexport void docstring_test_1() { }
 /// docstring test 2

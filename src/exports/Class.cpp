@@ -97,7 +97,7 @@ void Class::Accessor::codegen(const Class &parent, std::ostream &out) const
 
 		if(getter->getResultType()->isVoidType())
 			diag::stop(*getter, "getter must not return `void`.");
-			
+
 		auto ty = getter->getResultType().getNonReferenceType();
 		ty.removeLocalConst();
 		ty.removeLocalRestrict();
@@ -166,20 +166,25 @@ Class::Class(const clang::CXXRecordDecl &decl)
 : Export(decl.getNameAsString())
 , _decl(decl)
 , _selfTypeRef(gensym(decl.getNameAsString()))
+, _constructor(decl.getQualifiedNameAsString())
 {
 	std::unordered_map<std::string, std::unique_ptr<Func>> functions;
 	using namespace streams;
-
+	_constructor.setSelfTypeRef(_selfTypeRef);
+	if(decl.hasDefaultConstructor())
+	{
+		_constructor.setDefaultConstructible();
+	}
 	for(auto it = decl.method_begin(), end = decl.method_end(); it != end; ++it)
 	{
 		auto kind = it->getKind();
 		if(kind == clang::CXXMethodDecl::CXXConstructor)
 		{
-			// TODO: constructor overloading
 			auto constructor = llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(*it);
-			if(!_constructor && !constructor->isCopyConstructor() && !constructor->isMoveConstructor())
+
+			if(!constructor->isCopyConstructor() && !constructor->isMoveConstructor())
 			{
-				_constructor = constructor;
+				_constructor.addDecl(*constructor);
 			}
 		}
 		else if(kind == clang::CXXMethodDecl::CXXDestructor)
@@ -290,42 +295,6 @@ void Class::codegenDefinition(std::ostream &out) const
 		{{wrappedType}} object;
 	};
 
-	static PyObject *{{selfTypeRef}}_new(PyTypeObject *ty, PyObject *args, PyObject *kwargs)
-	{
-		{{selfTypeRef}} *self = ({{selfTypeRef}} *)ty->tp_alloc(ty, 0);
-		if(!self) return 0;
-
-		self->initialized = false;
-
-		int ok = 1;
-
-		try
-		{
-			{{unpackTuple}}
-			if({{unpackOk}})
-			{
-				new((void *) &self->object) {{wrappedType}}({{callArgs}});
-				self->initialized = true;
-				return (PyObject *)self;
-			}
-			else
-			{
-				Py_XDECREF(self);
-				return 0;
-			}
-		}
-		catch(python::Exception &)
-		{
-			Py_XDECREF(self);
-			return 0;
-		}
-		catch(std::exception &exc)
-		{
-			Py_XDECREF(self);
-			return PyErr_Format(PyExc_RuntimeError, "%s", exc.what());
-		}
-	}
-
 	static int {{selfTypeRef}}_init({{selfTypeRef}} *self, PyObject *args, PyObject *kw)
 	{
 		return 0;
@@ -350,27 +319,15 @@ void Class::codegenDefinition(std::ostream &out) const
 
 	)EOF";
 
-
-	TupleUnpacker unpacker("args", "kwargs");
-	if(_constructor)
-	{
-		for(auto arg : streams::stream(_constructor->param_begin(),
-		                               _constructor->param_end()))
-		{
-			unpacker.addElement(*arg);
-		}
-	}
-
-
 	auto wrappedTypeName = _decl.getQualifiedNameAsString();
 
 	tpl.into(out)
 		.set("wrappedType", wrappedTypeName)
 		.set("selfTypeRef", _selfTypeRef)
-		.setFunc("unpackTuple", method(unpacker, &TupleUnpacker::codegen))
-		.set("callArgs", streams::cat(streams::stream(unpacker.elementRefs())
-		                              | streams::interposed(", ")))
-		.set("unpackOk", unpacker.okRef())
+// 		.setFunc("unpackTuple", method(unpacker, &TupleUnpacker::codegen))
+// 		.set("callArgs", streams::cat(streams::stream(unpacker.elementRefs())
+// 		                              | streams::interposed(", ")))
+// 		.set("unpackOk", unpacker.okRef())
 		.set("destructor", "~" + wrappedTypeName)
 		.setFunc("methodTable", [&](std::ostream &out) {
 			for(const auto &func : _functions)
@@ -394,6 +351,7 @@ void Class::codegenDefinition(std::ostream &out) const
 		func->codegenDefinition(out);
 	}
 
+	_constructor.codegenDefinition(out);
 
 
 	static const StringTemplate typeObjectTemplate = R"EOF(
@@ -435,7 +393,7 @@ void Class::codegenDefinition(std::ostream &out) const
 		0,                                                                            /* tp_dictoffset */     
 		(initproc){{structName}}_init,                                                /* tp_init */
 		0,                                                                            /* tp_alloc */          
-		{{structName}}_new,                                                           /* tp_new */
+		{{constructorRef}},                                                           /* tp_new */
 	};
 	)EOF";
 
@@ -447,6 +405,7 @@ void Class::codegenDefinition(std::ostream &out) const
 		.set("cppName", _decl.getQualifiedNameAsString())
 		.set("typeName", _decl.getQualifiedNameAsString())
 		.set("docstring", processDocString(findDocumentationComments(_decl)))
+		.set("constructorRef", _constructor.implRef())
 		.expand();
 
 	for(const auto &accessor : _accessors)
@@ -465,6 +424,7 @@ void Class::codegenDefinition(std::ostream &out) const
 			try
 			{
 				new ((void *) &self->object) {{typeName}}(obj);
+				self->initialized = true;
 				return (PyObject *)self;
 			}
 			catch(python::Exception &)

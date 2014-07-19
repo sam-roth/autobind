@@ -15,8 +15,10 @@ class Func: public Export
 	std::vector<const clang::FunctionDecl *> _decls;
 	std::string _implRef;
 	std::string _selfTypeRef;
-
-	void codegenPrototype(std::ostream &) const;
+protected:
+	virtual void codegenPrototype(std::ostream &) const;
+	virtual void codegenOverload(std::ostream &, size_t) const;
+	virtual void beforeOverloads(std::ostream &) const { }
 public:
 	Func(std::string name);
 
@@ -38,13 +40,39 @@ public:
 	{
 		_selfTypeRef = std::move(r);
 	}
-	
+
 	const std::string &selfTypeRef() const
 	{
 		return _selfTypeRef;
 	}
 
+	const std::string &implRef() const
+	{
+		return _implRef;
+	}
+
 	virtual void merge(const Export &e) override;
+	virtual ~Func() { }
+};
+
+
+
+class Constructor: public Func
+{
+	bool _defaultConstructible = false;
+	void codegenOverloadOrDefault(std::ostream &, int) const;
+public:
+	Constructor(std::string name)
+	: Func(name) { }
+
+	void setDefaultConstructible()
+	{
+		_defaultConstructible = true;
+	}
+protected:
+	virtual void codegenPrototype(std::ostream &) const;
+	virtual void codegenOverload(std::ostream &, size_t) const;
+	virtual void beforeOverloads(std::ostream &) const;
 };
 
 

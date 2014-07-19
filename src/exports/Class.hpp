@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include "../Export.hpp"
+#include "Func.hpp"
 
 namespace clang 
 { 
@@ -20,13 +21,13 @@ namespace clang
 namespace autobind {
 
 class Func;
+
 class Class: public Export
 {
 	const clang::CXXRecordDecl &_decl;
-	const clang::CXXConstructorDecl *_constructor = nullptr;
 	std::string _selfTypeRef;
 	std::string _moduleName;
-
+	
 	struct Accessor
 	{
 		const clang::CXXMethodDecl *getter=nullptr, *setter=nullptr;
@@ -37,7 +38,7 @@ class Class: public Export
 		void codegen(const Class &parent, std::ostream &out) const;
 	};
 
-
+	Constructor _constructor;
 	std::map<std::string, Accessor> _accessors;
 	std::vector<std::unique_ptr<Func>> _functions;
 
