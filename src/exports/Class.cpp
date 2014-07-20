@@ -25,7 +25,6 @@ Class::Class(const clang::CXXRecordDecl &decl)
 {
 	_selfTypeRef = _classData.wrapperRef();
 
-	std::unordered_map<std::string, std::unique_ptr<Func>> functions;
 	using namespace streams;
 	_constructor.setSelfTypeRef(_selfTypeRef);
 	for(auto it = decl.method_begin(), end = decl.method_end(); it != end; ++it)
@@ -34,7 +33,7 @@ Class::Class(const clang::CXXRecordDecl &decl)
 		if(kind == clang::CXXMethodDecl::CXXConstructor)
 		{
 			auto constructor = llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(*it);
-
+			
 			if(!constructor->isCopyConstructor() && !constructor->isMoveConstructor())
 			{
 				_constructor.addDecl(*constructor);
@@ -42,7 +41,7 @@ Class::Class(const clang::CXXRecordDecl &decl)
 		}
 		else if(kind == clang::CXXMethodDecl::CXXDestructor)
 		{
-			// TODO:
+			// Destructors are always called the same way.
 		}
 		else if(!it->isStatic() 
 		        && it->getAccess() == clang::AS_public 
@@ -57,17 +56,17 @@ Class::Class(const clang::CXXRecordDecl &decl)
 				auto annot = attr->getAnnotation();
 				if(annot.startswith("pygetter:"))
 				{
-					Descriptor d(annot.split(':').second, classData());
-					d.setGetter(*it);
-					mergeDescriptor(d);
+					auto d = make_unique<Descriptor>(annot.split(':').second, classData());
+					d->setGetter(*it);
+					mergeClassExport(std::move(d));
 					omit = true;
 					break;
 				}
 				else if(annot.startswith("pysetter:"))
 				{
-					Descriptor d(annot.split(':').second, classData());
-					d.setSetter(*it);
-					mergeDescriptor(d);
+					auto d = make_unique<Descriptor>(annot.split(':').second, classData());
+					d->setSetter(*it);
+					mergeClassExport(std::move(d));
 					omit = true;
 					break;
 				}
@@ -75,33 +74,27 @@ Class::Class(const clang::CXXRecordDecl &decl)
 
 			if(!omit)
 			{
-				auto &decl = functions[name];
-				if(!decl)
-				{
-					decl.reset(new Func(name));
-				}
-				decl->addDecl(**it);
-				decl->setSelfTypeRef(_selfTypeRef);
+				auto f = ::autobind::make_unique<Method>(name, classData());
+				f->addDecl(**it);
+				mergeClassExport(std::move(f));
 			}
 		}
 
 	}
 
-	for(auto &pair : functions)
-	{
-		_functions.push_back(std::move(pair.second));
-	}
 }
 
-void Class::mergeDescriptor(const autobind::Descriptor &d)
+void Class::mergeClassExport(std::unique_ptr<ClassExport> ex)
 {
-	auto &existing = _descriptors[d.name()];
+	auto &existing = _exports[ex->name()];
 	if(!existing)
 	{
-		existing.reset(new Descriptor(d.name(), classData()));
+		existing = std::move(ex);
 	}
-
-	existing->merge(d);
+	else
+	{
+		existing->merge(*ex);
+	}
 }
 
 
@@ -123,14 +116,9 @@ void Class::codegenDeclaration(std::ostream &out) const
 		.set("wrappedType", _decl.getQualifiedNameAsString())
 		.expand();
 
-	for(const auto &func : _functions)
+	for(const auto &e : _exports)
 	{
-		func->codegenDeclaration(out);
-	}
-
-	for(const auto &desc : _descriptors)
-	{
-		desc.second->codegenDeclaration(out);
+		e.second->codegenDeclaration(out);
 	}
 
 	// TODO: handle noncopyable types
@@ -192,22 +180,22 @@ void Class::codegenDefinition(std::ostream &out) const
 		.set("selfTypeRef", _selfTypeRef)
 		.set("destructor", "~" + wrappedTypeName)
 		.setFunc("methodTable", [&](std::ostream &out) {
-			for(const auto &func : _functions)
+			for(const auto &e : _exports)
 			{
-				func->codegenMethodTable(out);
+				e.second->codegenMethodTable(out);
 			}
 		})
 		.setFunc("getSetTable", [&](std::ostream &out) { 
-			for(const auto &pair : _descriptors)
+			for(const auto &e : _exports)
 			{
-				pair.second->codegenGetSet(out);
+				e.second->codegenGetSet(out);
 			}
 		})
 		.expand();
 
-	for(const auto &func : _functions)
+	for(const auto &e : _exports)
 	{
-		func->codegenDefinition(out);
+		e.second->codegenDefinition(out);
 	}
 
 	_constructor.codegenDefinition(out);
@@ -267,10 +255,6 @@ void Class::codegenDefinition(std::ostream &out) const
 		.set("constructorRef", _constructor.implRef())
 		.expand();
 
-	for(const auto &pair : _descriptors)
-	{
-		pair.second->codegenDefinition(out);
-	}
 	// TODO: handle noncopyables
 
 	static const StringTemplate conversionImplTemplate = R"EOF(

@@ -28,19 +28,16 @@ class Class: public Export
 	const clang::CXXRecordDecl &_decl;
 	std::string _selfTypeRef;
 	std::string _moduleName;
-	
+
 	ClassData _classData;
+
 	Constructor _constructor;
-
-	std::map<std::string, std::unique_ptr<Descriptor>> _descriptors;
-	std::vector<std::unique_ptr<Func>> _functions;
-
-	void mergeDescriptor(const Descriptor &d);
+	std::map<std::string, std::unique_ptr<ClassExport>> _exports;
+	void mergeClassExport(std::unique_ptr<ClassExport>);
 public:
 	Class(const clang::CXXRecordDecl &decl);
 
 	const ClassData &classData() const { return _classData; }
-	const std::vector<std::unique_ptr<Func>> &functions() const { return _functions; }
 	const std::string &selfTypeRef() const { return _selfTypeRef; }
 
 	void setModuleName(const std::string &moduleName) { _moduleName = moduleName; }

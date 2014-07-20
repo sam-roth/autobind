@@ -191,24 +191,42 @@ Descriptor::Descriptor(const std::string &name,
 , ClassExport(name, classData)
 { }
 
+
 void Descriptor::merge(const autobind::Export &exp)
 {
 	if(auto that = dynamic_cast<const Descriptor *>(&exp))
 	{
-		if(that->_getter) _getter = that->_getter;
-		if(that->_setter) _setter = that->_setter;
+		if(that->_getter) setGetter(that->_getter);
+		if(that->_setter) setSetter(that->_setter);
 	}
 	else
 	{
 		ClassExport::merge(exp);
 	}
 }
+void Descriptor::setSetter(const clang::FunctionDecl *value)
+{
+	_setter = value;
+	if(_setter)
+		_setterRef = gensym(classData().wrapperRef() + "_" + _setter->getNameAsString());
+	else
+		_setterRef = "0";
+}
+
+
+void Descriptor::setGetter(const clang::FunctionDecl *value) 
+{
+	_getter = value;
+	if(_getter)
+		_getterRef = gensym(classData().wrapperRef() + "_" + _getter->getNameAsString());
+	else
+		_getterRef = "0";
+}
 
 void Descriptor::codegenDeclaration(std::ostream &out) const
 {
 	if(_getter)
 	{
-		_getterRef = gensym(classData().wrapperRef() + "_" + _getter->getNameAsString());
 		static const StringTemplate tpl = R"EOF(
 		static PyObject *{{implName}}({{selfTypeName}} *self, void */*closure*/);
 		)EOF";
@@ -224,8 +242,7 @@ void Descriptor::codegenDeclaration(std::ostream &out) const
 		static const StringTemplate tpl = R"EOF(
 		static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure);
 		)EOF";
-
-		_setterRef = gensym(classData().wrapperRef() + "_" + _setter->getNameAsString());
+		
 		tpl.into(out)
 			.set("implName", _setterRef)
 			.set("selfTypeName", classData().wrapperRef())
@@ -357,6 +374,15 @@ void Descriptor::codegenGetSet(std::ostream &out) const
 		<< "(setter) " << _setterRef << ", "
 		<< "(char *)\"" << escapedDocstring() << "\"},\n";
 }
+
+Method::Method(const std::string &name, const autobind::ClassData &classData)
+: Export(name)
+, Func(name)
+, ClassExport(name, classData)
+{
+	setSelfTypeRef(classData.wrapperRef());
+}
+
 
 
 

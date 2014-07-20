@@ -61,7 +61,7 @@ public:
 
 
 // TODO: move this to another file
-class Constructor: public virtual Func, public virtual ClassExport
+class Constructor: public Func, public ClassExport
 {
 	void codegenOverloadOrDefault(std::ostream &, int) const;
 public:
@@ -74,24 +74,18 @@ protected:
 };
 
 
-class Descriptor: public virtual ClassExport
+class Descriptor: public ClassExport
 {
 	const clang::FunctionDecl *_setter = nullptr, *_getter = nullptr;
-	mutable std::string _getterRef="0", _setterRef="0";
+	std::string _getterRef="0", _setterRef="0";
 	std::string escapedDocstring() const;
+
 public:
 	Descriptor(const std::string &name,
 	           const ClassData &classData);
 
-	void setSetter(clang::FunctionDecl *value)
-	{
-		_setter = value;
-	}
-
-	void setGetter(clang::FunctionDecl *value)
-	{
-		_getter = value;
-	}
+	void setSetter(const clang::FunctionDecl *value);
+	void setGetter(const clang::FunctionDecl *value);
 
 	virtual void merge(const Export &e) override;
 
@@ -99,6 +93,14 @@ public:
 	virtual void codegenDefinition(std::ostream &) const override;
 	virtual void codegenMethodTable(std::ostream &) const override;
 	virtual void codegenGetSet(std::ostream &) const override;
+};
+
+
+class Method: public Func, public ClassExport
+{
+public:
+	Method(const std::string &name,
+	       const ClassData &classData);
 };
 
 
