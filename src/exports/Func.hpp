@@ -74,6 +74,7 @@ protected:
 };
 
 
+/// ClassExport for getters and setters
 class Descriptor: public ClassExport
 {
 	const clang::FunctionDecl *_setter = nullptr, *_getter = nullptr;

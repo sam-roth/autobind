@@ -31,6 +31,8 @@ class InterposeStream;
 
 struct StreamBase { };
 
+/// A lazy sequence of values. This is a CRTP base class: the derived class
+/// must implement the empty(), front(), and next() methods.
 template <class Val, class Derived, class Ref=Val&>
 struct Stream: public StreamBase
 {
@@ -45,12 +47,18 @@ struct Stream: public StreamBase
 	StreamIterator<Derived> begin();
 	StreamIterator<Derived> end();
 
+	/// Create a stream yielding the elements of this stream transformed by the given
+	/// function.
 	template <class Transform>
 	TransformStream<Derived, Transform> map(Transform t) const;
 
+	/// Create a stream yielding only the elements of this stream for which the given
+	/// function returns true.
 	template <class Filter>
 	FilterStream<Derived, Filter> filter(Filter f) const;
 
+	/// Create a stream that alternates between yielding elements from this stream and
+	/// yielding the given value.
 	InterposeStream<Derived> interpose(Val v) const;
 };
 

@@ -12,6 +12,7 @@ namespace autobind {
 
 class ClassData;
 
+/// Subclass of Export for exports at class scope
 class ClassExport: public virtual Export
 {
 	const ClassData &_classData;
