@@ -22,6 +22,7 @@ namespace autobind {
 
 
 class Module;
+class ConversionInfo;
 
 /// Represents the bindings for a C++ declaration.
 class Export
@@ -51,6 +52,11 @@ public:
 	virtual void merge(const Export &other)
 	{
 		throw std::runtime_error("Cannot merge export " + name() + " with " + other.name());
+	}
+
+	virtual bool validate(const ConversionInfo &) const
+	{
+		return true;
 	}
 };
 

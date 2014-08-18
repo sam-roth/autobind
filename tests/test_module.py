@@ -93,3 +93,8 @@ def test_constructor_overload():
 	assert module.ConstructorOverload(1).get() == 1
 	assert module.ConstructorOverload(1,1).get() == 2
 
+
+def test_methods():
+	m = module.Methods('baz')
+	assert m.foo() == 'foobaz'
+	assert m.bar() == 'barbaz'

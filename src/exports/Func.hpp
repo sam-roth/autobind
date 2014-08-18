@@ -54,8 +54,10 @@ public:
 	{
 		return _implRef;
 	}
-
+	
 	virtual void merge(const Export &e) override;
+	virtual bool validate(const ConversionInfo &) const;
+
 	virtual ~Func() { }
 };
 

@@ -27,6 +27,27 @@ struct pyexport Keywords
 	GETTER(baz)
 };
 
+
+struct pyexport Methods
+{
+	std::string s;
+
+	Methods(std::string s)
+	: s(s) { }
+
+
+	std::string foo() const
+	{
+		return "foo" + s;
+	}
+	
+	std::string bar() const
+	{
+		return "bar" + s;
+	}
+};
+
+
 pyexport Keywords make_keywords(int foo, const char *bar, std::string baz)
 {
 	return {foo, bar, baz};

@@ -70,13 +70,16 @@ class DiscoveryVisitor
 	clang::ClassTemplateDecl *_pyConversion = 0;
 	std::unordered_set<const clang::Type *> _knownTypes;
 
+
 public:
+	const clang::ASTContext &context;
 
 	explicit DiscoveryVisitor(clang::ASTContext *context, 
 	                          autobind::ModuleManager &modmgr,
 	                          clang::CompilerInstance &compiler)
 	: _modmgr(modmgr)
 	, _compiler(compiler)
+	, context(*context)
 	{
 		assert(_compiler.hasSema());
 
@@ -84,6 +87,7 @@ public:
 			context->IntTy.getTypePtr(),
 			context->getPointerType(context->getConstType(context->CharTy)).getTypePtr()
 		};
+
 	}
 
 	bool willConversionSpecializationExist(const clang::Type *ty)
@@ -109,7 +113,7 @@ public:
 	void validateExportedFunctionDecl(const clang::FunctionDecl *func)
 	{
 		// TODO: defer this until after visiting the entire TU
-		
+
 #if 0
 		using namespace streams;
 		for(auto param : stream(func->param_begin(),
@@ -133,6 +137,20 @@ public:
 			}
 		}
 #endif
+	}
+
+	bool TraverseTranslationUnitDecl(clang::TranslationUnitDecl *decl)
+	{
+		bool result = clang::RecursiveASTVisitor<DiscoveryVisitor>::TraverseTranslationUnitDecl(decl);
+		ConversionInfo info(*this);
+		if(result)
+		{
+			for(const auto &module : _modmgr.moduleStream())
+			{
+				module.second.validate(info);
+			}
+		}
+		return result;
 	}
 
 	bool VisitClassTemplateDecl(clang::ClassTemplateDecl *decl)
@@ -166,6 +184,7 @@ public:
 		auto klass = ::autobind::make_unique<Class>(*decl);
 		klass->setModuleName(_modstack.back()->name());
 		_modstack.back()->addExport(std::move(klass));
+		_knownTypes.insert(decl->getTypeForDecl());
 
 	}
 
@@ -317,6 +336,37 @@ public:
 		return _matches;
 	}
 };
+bool ConversionInfo::ensureConversionSpecializationExists(const clang::Decl *decl, 
+                                                          const clang::Type *tyPtr) const
+{
+// 	clang::QualType ty(tyPtr, 0);
+	auto ty = tyPtr->getCanonicalTypeUnqualified();
+	ty = ty.getNonReferenceType();
+
+// 	ty.removeLocalVolatile();
+// 	ty.removeLocalConst();
+// 	ty.removeLocalRestrict();
+// 	ty = ty.getCanonicalType();
+
+	auto qty = clang::QualType(ty.getTypePtr(), 0);
+	
+	if(!willConversionSpecializationExist(ty.getTypePtr()))
+	{
+		auto &diags = _parent.context.getDiagnostics();
+		unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, 
+		                                    "No specialization of python::Conversion for type '" + qty.getAsString() + "'");
+		diags.Report(decl->getLocation(), id);
+		return false;
+	}
+
+
+	return true;
+}
+
+bool ConversionInfo::willConversionSpecializationExist(const clang::Type *ty) const
+{
+	return _parent.willConversionSpecializationExist(ty);
+}
 
 void discoverTranslationUnit(autobind::ModuleManager &mgr,
                              clang::TranslationUnitDecl &tu,

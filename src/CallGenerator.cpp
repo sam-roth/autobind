@@ -22,10 +22,9 @@ CallGenerator::CallGenerator(std::string argsRef,
 
 void CallGenerator::codegen(std::ostream &out) const
 {
-	// TODO: implement methods
 	static const StringTemplate top = R"EOF(
 	{{unpack}}
-
+	
 	if({{ok}})
 	{
 		try

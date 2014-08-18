@@ -12,6 +12,7 @@
 #include "../StringTemplate.hpp"
 #include "../ClassData.hpp"
 #include "../diagnostics.hpp"
+#include "../DiscoveryVisitor.hpp"
 
 namespace autobind {
 
@@ -183,6 +184,28 @@ void Constructor::beforeOverloads(std::ostream &out) const
 	{
 		codegenOverloadOrDefault(out, -1);
 	}
+}
+
+bool Func::validate(const autobind::ConversionInfo &info) const
+{
+	using namespace streams;
+	bool result = true;
+	for(auto func : _decls)
+	{
+		for(auto param : stream(func->param_begin(),
+		                        func->param_end()))
+		{
+			result = info.ensureConversionSpecializationExists(param, param->getType().getTypePtr()) && result;
+		}
+
+		auto resultTy = func->getResultType();
+		if(!resultTy->isVoidType())
+		{
+			result = info.ensureConversionSpecializationExists(func, resultTy.getTypePtr()) && result;
+		}
+	}
+
+	return result;
 }
 
 Descriptor::Descriptor(const std::string &name, 

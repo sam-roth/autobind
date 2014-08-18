@@ -59,6 +59,7 @@ public:
 	void codegenInit(std::ostream &out) const;
 	void codegen(std::ostream &out) const;
 
+	bool validate(const ConversionInfo &) const;
 };
 
 
