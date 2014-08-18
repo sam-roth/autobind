@@ -6,7 +6,7 @@
 #include <sstream>
 #include <memory>
 #include <clang/AST/ASTConsumer.h>
-/// Defines a function with the signature `signature` and an automatcally-deduced return type,
+/// Defines a function with the signature `signature` and an automatically-deduced return type,
 /// returning the given expression. The `expression` argument must be an expression (no semicolon, if, ...).
 /// Example: AB_RETURN_AUTO(doubleNumber(int n), n * 2)
 ///
@@ -35,6 +35,34 @@ clang::ASTConsumer *newASTConsumer(F func)
 
 namespace autobind {
 
+std::string processDocString(const std::string &docstring);
+
+template <class T, class F>
+class MethodRef
+{
+	T &&that;
+	F mbr;
+public:
+	MethodRef(T &&that, F mbr)
+	: that(that)
+	, mbr(mbr)
+	{
+
+	}
+
+	template <class... Args>
+	AB_RETURN_AUTO(operator()(Args &&... args) const,
+	               (that.*mbr)(std::forward<Args>(args)...))
+
+};
+
+template <class T, class F>
+MethodRef<T, F> method(T &&that, F mbr)
+{
+	return MethodRef<T, F>(that, mbr);
+}
+
+
 template <class T, class... Args>
 std::unique_ptr<T> make_unique(Args &&... args)
 {
@@ -59,6 +87,8 @@ IterRange<T> toRange(T first, T last)
 
 #define PROP_RANGE(prefix) toRange(prefix ## _begin(), prefix ## _end())
 
+std::string findDocumentationComments(const clang::Decl &d);
+std::string createPythonSignature(const clang::FunctionDecl &d);
 
 template <class K, class V>
 boost::optional<const V &> get(const std::map<K, V> &map,

@@ -30,3 +30,7 @@ ui_*
 *.doctree
 *.pickle
 build
+doc/doxygen/latex
+doc/doxygen/docbook
+doc/doxygen/html
+doc/doxygen/xml

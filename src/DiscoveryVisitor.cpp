@@ -1,10 +1,15 @@
-
+// Copyright (c) 2014, Samuel A. Roth. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can
+// be found in the COPYING file.
 
 #include "DiscoveryVisitor.hpp"
-#include "DataExtractor.hpp"
 
 #include "util.hpp"
-#include "Type.hpp"
+#include "exports/Func.hpp"
+#include "exports/Class.hpp"
+#include "attributeStream.hpp"
+
 #include <clang/Sema/Sema.h>
 #include <unordered_set>
 
@@ -36,27 +41,6 @@ std::string prototypeSpelling(clang::FunctionDecl *decl)
 	return result;
 }
 
-
-AB_RETURN_AUTO(attributeStream(clang::Decl &x),
-               streams::stream(x.specific_attr_begin<clang::AnnotateAttr>(),
-                               x.specific_attr_end<clang::AnnotateAttr>()))
-
-bool isPyExport(clang::Decl *d)
-{
-	using namespace streams;
-
-	auto pred = [](const clang::AnnotateAttr *a) { return a->getAnnotation() == "pyexport"; };
-	return any(attributeStream(*d) | transformed(pred));
-}
-
-bool isPyNoExport(clang::Decl *d)
-{
-	using namespace streams;
-
-	auto pred = [](const clang::AnnotateAttr *a) { return a->getAnnotation() == "pynoexport"; };
-	return any(attributeStream(*d) | transformed(pred));
-}
-
 template <class Decl, class Func>
 bool errorToDiag(Decl decl, const Func &func) {
 	try
@@ -77,7 +61,6 @@ bool errorToDiag(Decl decl, const Func &func) {
 class DiscoveryVisitor
 : public clang::RecursiveASTVisitor<DiscoveryVisitor>
 {
-	DataExtractor _wrapperEmitter;
 	bool _foundModule = false;
 	std::vector<clang::FunctionDecl *> _matches;
 	autobind::ModuleManager &_modmgr;
@@ -87,14 +70,16 @@ class DiscoveryVisitor
 	clang::ClassTemplateDecl *_pyConversion = 0;
 	std::unordered_set<const clang::Type *> _knownTypes;
 
+
 public:
+	const clang::ASTContext &context;
 
 	explicit DiscoveryVisitor(clang::ASTContext *context, 
 	                          autobind::ModuleManager &modmgr,
 	                          clang::CompilerInstance &compiler)
-	: _wrapperEmitter(context)
-	, _modmgr(modmgr)
+	: _modmgr(modmgr)
 	, _compiler(compiler)
+	, context(*context)
 	{
 		assert(_compiler.hasSema());
 
@@ -102,6 +87,7 @@ public:
 			context->IntTy.getTypePtr(),
 			context->getPointerType(context->getConstType(context->CharTy)).getTypePtr()
 		};
+
 	}
 
 	bool willConversionSpecializationExist(const clang::Type *ty)
@@ -153,6 +139,20 @@ public:
 #endif
 	}
 
+	bool TraverseTranslationUnitDecl(clang::TranslationUnitDecl *decl)
+	{
+		bool result = clang::RecursiveASTVisitor<DiscoveryVisitor>::TraverseTranslationUnitDecl(decl);
+		ConversionInfo info(*this);
+		if(result)
+		{
+			for(const auto &module : _modmgr.moduleStream())
+			{
+				module.second.validate(info);
+			}
+		}
+		return result;
+	}
+
 	bool VisitClassTemplateDecl(clang::ClassTemplateDecl *decl)
 	{
 		if(decl->getQualifiedNameAsString() == "python::Conversion")
@@ -179,118 +179,13 @@ public:
 
 	void handleExportRecordDecl(clang::CXXRecordDecl *decl)
 	{
-		using namespace streams;
+// 		using namespace streams;
 
-		_knownTypes.insert(decl->getTypeForDecl());  // we'll generate a conversion function later
+		auto klass = ::autobind::make_unique<Class>(*decl);
+		klass->setModuleName(_modstack.back()->name());
+		_modstack.back()->addExport(std::move(klass));
+		_knownTypes.insert(decl->getTypeForDecl());
 
-		auto name = decl->getQualifiedNameAsString();
-		auto unqualName = rsplit(name, "::").second;
-
-		std::string docstring;
-
-		if(auto comment = decl->getASTContext().getRawCommentForAnyRedecl(decl))
-		{
-			if(comment->isDocumentation())
-			{
-				docstring = comment->getRawText(decl->getASTContext().getSourceManager());
-			}
-		}
-
-		auto ty = ::autobind::make_unique<Type>(unqualName, name, docstring);
-
-
-		bool foundConstructor = false;
-
-		if(decl->hasTrivialCopyConstructor() || decl->hasNonTrivialCopyConstructor())
-		{
-			ty->setCopyAvailable();
-		}
-
-
-		std::set<const clang::CXXMethodDecl *> found;
-
-		auto addMethod = [&](clang::CXXMethodDecl *md) {
-			for(auto overriden : stream(md->begin_overridden_methods(),
-			                            md->end_overridden_methods()))
-			{
-				found.erase(overriden);
-			}
-			if(!isPyNoExport(md))
-			{
-				found.insert(md);
-			}
-		};
-
-		for(const auto &base : stream(decl->bases_begin(),
-		                              decl->bases_end()))
-		{
-			if(base.getAccessSpecifier() != clang::AS_public) continue;
-
-			auto record = base.getType()->getAsCXXRecordDecl();
-			if(!record) continue;
-
-			for(auto field : stream(record->decls_begin(),
-			                        record->decls_end()))
-			{
-				if(llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field)
-				   || llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field)) continue;
-
-				if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
-				{
-
-					if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public
-					   && !method->isTemplateDecl())
-					{
-						addMethod(method);
-					}
-				}
-			}
-
-		}
-
-
-		for(auto field : stream(decl->decls_begin(), decl->decls_end()))
-		{
-
-			if(auto constructor = llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(field))
-			{
-				if(!foundConstructor && !constructor->isCopyOrMoveConstructor()
-				   && !isPyNoExport(constructor))
-				{
-					foundConstructor = true;
-					auto cdata = _wrapperEmitter.function(constructor);
-					cdata->setReturnType("void"); // prevents attempting to convert result type
-					ty->setConstructor(std::move(cdata));
-				}
-				else if(constructor->isCopyConstructor())
-				{
-					ty->setCopyAvailable();
-				}
-			}
-			else if(llvm::dyn_cast_or_null<clang::CXXDestructorDecl>(field))
-			{
-				// ignore -- don't bind destructors
-			}
-			else if(auto method = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(field))
-			{
-				if(!method->isOverloadedOperator() && method->getAccess() == clang::AS_public
-				   && !method->isTemplateDecl())
-				{
-					addMethod(method);
-				}
-			}
-		}
-
-		for(auto method : found)
-		{
-			validateExportedFunctionDecl(method);
-			auto mdata = _wrapperEmitter.method(const_cast<clang::CXXMethodDecl *>(method));
-			ty->addMethod(std::move(mdata));
-		}
-
-
-
-		_modstack.back()->addExport(std::move(ty));
 	}
 
 
@@ -313,7 +208,9 @@ public:
 				}
 				else if(auto funcDecl = llvm::dyn_cast_or_null<clang::FunctionDecl>(target))
 				{
-					_modstack.back()->addExport(_wrapperEmitter.function(funcDecl));
+					auto func = ::autobind::make_unique<Func>(decl->getNameAsString());
+					func->addDecl(*funcDecl);
+					_modstack.back()->addExport(std::move(func));
 				}
 			}
         });
@@ -428,7 +325,9 @@ public:
 
 		return errorToDiag(decl, [&]{
 			this->validateExportedFunctionDecl(decl);
-			_modstack.back()->addExport(_wrapperEmitter.function(decl));
+			auto func = ::autobind::make_unique<Func>(decl->getNameAsString());
+			func->addDecl(*decl);
+			_modstack.back()->addExport(std::move(func));
         });
 	}
 
@@ -437,6 +336,37 @@ public:
 		return _matches;
 	}
 };
+bool ConversionInfo::ensureConversionSpecializationExists(const clang::Decl *decl, 
+                                                          const clang::Type *tyPtr) const
+{
+// 	clang::QualType ty(tyPtr, 0);
+	auto ty = tyPtr->getCanonicalTypeUnqualified();
+	ty = ty.getNonReferenceType();
+
+// 	ty.removeLocalVolatile();
+// 	ty.removeLocalConst();
+// 	ty.removeLocalRestrict();
+// 	ty = ty.getCanonicalType();
+
+	auto qty = clang::QualType(ty.getTypePtr(), 0);
+	
+	if(!willConversionSpecializationExist(ty.getTypePtr()))
+	{
+		auto &diags = _parent.context.getDiagnostics();
+		unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, 
+		                                    "No specialization of python::Conversion for type '" + qty.getAsString() + "'");
+		diags.Report(decl->getLocation(), id);
+		return false;
+	}
+
+
+	return true;
+}
+
+bool ConversionInfo::willConversionSpecializationExist(const clang::Type *ty) const
+{
+	return _parent.willConversionSpecializationExist(ty);
+}
 
 void discoverTranslationUnit(autobind::ModuleManager &mgr,
                              clang::TranslationUnitDecl &tu,

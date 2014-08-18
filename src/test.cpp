@@ -1,8 +1,24 @@
 #include <iostream>
+#include <clang/AST/ASTContext.h>
+#include "clang/AST/ASTConsumer.h"
+#include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/FrontendAction.h"
+#include "clang/Tooling/Tooling.h"
+#include "clang/AST/Attr.h"
+
 #include "util.hpp"
 #include "StringTemplate.hpp"
-#include "regex.hpp"
+#include "TupleUnpacker.hpp"
+#include "CallGenerator.hpp"
+#include "exports/Func.hpp"
+#include "exports/Class.hpp"
 
+#include "Module.hpp"
+
+#include "regex.hpp"
+#include "stream.hpp"
+#include "printing.hpp"
 static void testStringTemplate()
 {
 	autobind::StringTemplate stmp = R"EOF(
@@ -59,11 +75,105 @@ static void testRegexReplace()
 	assert(reconstructed == text);
 }
 
+template <class F>
+clang::ASTFrontendAction *newASTFrontendAction(F &&func)
+{
+	class Result: public clang::ASTFrontendAction
+	{
+		F &&func;
+	public:
+		Result(F &&func)
+		: func(func) { }
+
+		virtual clang::ASTConsumer *CreateASTConsumer(
+	    clang::CompilerInstance &compiler, llvm::StringRef inFile) override
+		{
+			return newASTConsumer(func);
+		}
+	};
+
+	return new Result(func);
+}
+
+bool hasAnnotation(const clang::Decl &decl, llvm::StringRef ann)
+{
+	using namespace streams;
+	for(auto a : stream(decl.specific_attr_begin<clang::AnnotateAttr>(),
+	                    decl.specific_attr_end<clang::AnnotateAttr>()))
+	{
+		if(a->getAnnotation() == ann) return true;
+	}
+
+	return false;
+}
+
 int main()
 {
 	testStringTemplate();
-
 	testRegexReplace();
+
+	auto testTupleUnpacker = [&](clang::ASTContext &ctx) {
+		auto tu = ctx.getTranslationUnitDecl();
+		autobind::Module mod;
+		mod.setName("testmod");
+		for(auto decl : streams::stream(tu->decls_begin(), tu->decls_end()))
+		{
+			if(!hasAnnotation(*decl, "pyexport")) continue;
+
+			if(auto funcDecl = llvm::dyn_cast_or_null<clang::FunctionDecl>(decl))
+			{
+				funcDecl->dumpColor();
+
+				auto f = autobind::make_unique<autobind::Func>(funcDecl->getQualifiedNameAsString());
+				f->addDecl(*funcDecl);
+				mod.addExport(std::move(f));
+			}
+		}
+
+		mod.setSourceTUPath("?");
+		mod.codegen(std::cout);
+	};
+
+
+	clang::tooling::runToolOnCode(newASTFrontendAction(testTupleUnpacker),
+	                              R"EOF(
+	                              class C;
+	                              __attribute__((annotate("pyexport")))
+	                              int foo(int bar, const char *baz, const C &quux);
+	                              C foo(int bar);
+
+	                              )EOF");
+
+
+	std::cout << "=========================================================================\n";
+
+	auto testClass = [&](clang::ASTContext &ctx) {
+		auto tu = ctx.getTranslationUnitDecl();
+		for(auto decl : streams::stream(tu->decls_begin(), tu->decls_end()))
+		{
+			if(!hasAnnotation(*decl, "pyexport")) continue;
+
+			if(auto classDecl = llvm::dyn_cast_or_null<clang::CXXRecordDecl>(decl))
+			{
+				classDecl->dumpColor();
+
+				auto klass = autobind::make_unique<autobind::Class>(*classDecl);
+				klass->codegenDeclaration(std::cout);
+				klass->codegenDefinition(std::cout);
+			}
+		}
+	};
+
+
+	auto classSample = R"EOF(
+	class __attribute__((annotate("pyexport"))) Foo
+	{
+	public:
+		void bar() { }
+	};
+	)EOF";
+	
+	clang::tooling::runToolOnCode(newASTFrontendAction(testClass), classSample);
 
 }
 

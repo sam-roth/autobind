@@ -1,6 +1,10 @@
+// Copyright (c) 2014, Samuel A. Roth. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can
+// be found in the COPYING file.
 
-//// A lightweight, simple alternative to Boost.Range adaptors.
-
+/// @file stream.hpp
+/// A lightweight, simple alternative to Boost.Range adaptors.
 
 #ifndef STREAM_HPP_U2MOFE
 #define STREAM_HPP_U2MOFE
@@ -13,11 +17,22 @@
 
 namespace streams {
 
+template <class SourceStream, class Transform, class Enable=void>
+class TransformStream;
+
+template <class SourceStream, class Filter>
+class FilterStream;
+
 template <class Stream>
 class StreamIterator;
 
+template <class StreamT>
+class InterposeStream;
+
 struct StreamBase { };
 
+/// A lazy sequence of values. This is a CRTP base class: the derived class
+/// must implement the empty(), front(), and next() methods.
 template <class Val, class Derived, class Ref=Val&>
 struct Stream: public StreamBase
 {
@@ -31,6 +46,20 @@ struct Stream: public StreamBase
 
 	StreamIterator<Derived> begin();
 	StreamIterator<Derived> end();
+
+	/// Create a stream yielding the elements of this stream transformed by the given
+	/// function.
+	template <class Transform>
+	TransformStream<Derived, Transform> map(Transform t) const;
+
+	/// Create a stream yielding only the elements of this stream for which the given
+	/// function returns true.
+	template <class Filter>
+	FilterStream<Derived, Filter> filter(Filter f) const;
+
+	/// Create a stream that alternates between yielding elements from this stream and
+	/// yielding the given value.
+	InterposeStream<Derived> interpose(Val v) const;
 };
 
 
@@ -139,8 +168,7 @@ ConstIteratorStream<It> stream(const It &first, const It &last)
 	return {first, last};
 }
 
-template <class SourceStream, class Transform, class Enable=void>
-class TransformStream;
+
 
 #define RESULT_TYPE decltype(std::declval<Transform>()(std::declval<typename SourceStream::value_type>()))
 template <class SourceStream, class Transform>//, class Enable=void>
@@ -725,6 +753,29 @@ FilterStream<TransformStream<Stream, DynamicCast<T>>, detail::Nonzero>
 operator |(Stream r, detail::DynamicCastPartial<T> p)
 {
 	return r | transformed(DynamicCast<T>()) | filtered(nonzero);
+}
+
+
+template <class Val, class Derived, class Ref>
+template <class Transform>
+TransformStream<Derived, Transform> Stream<Val, Derived, Ref>::map(Transform t) const
+{
+	return {*static_cast<const Derived *>(this), std::move(t)};
+}
+
+
+template <class Val, class Derived, class Ref>
+template <class Filter>
+FilterStream<Derived, Filter> Stream<Val, Derived, Ref>::filter(Filter f) const
+{
+	return {*static_cast<const Derived *>(this), std::move(f)};
+}
+
+
+template <class Val, class Derived, class Ref>
+InterposeStream<Derived> Stream<Val, Derived, Ref>::interpose(Val v) const
+{
+	return InterposeStream<Derived>(std::move(v), *static_cast<const Derived *>(this));
 }
 
 

@@ -97,6 +97,17 @@ void Module::codegen(std::ostream &out) const
 	codegenModuleDef(out);
 	codegenInit(out);
 }
+bool Module::validate(const ConversionInfo &info) const
+{
+	bool valid = true;
+	for(const auto &e : _exports)
+	{
+		// Don't stop early, so that we can emit as many error messages as possible before stopping.
+		valid = e.second->validate(info) && valid;
+	}
+	
+	return valid;
+}
 
 } // autobind
 

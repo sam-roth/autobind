@@ -16,7 +16,7 @@
 #include <map>
 #include <typeinfo>
 
-#include "optional.hpp"
+#include "autobind/optional.hpp"
 
 #define AB_PRIVATE_ANNOTATE(a...)        __attribute__((annotate(a)))
 #define AB_PRIVATE_TU_ANNOTATE(a...)     namespace AB_PRIVATE_ANNOTATE(a) { }
@@ -405,7 +405,7 @@ namespace python
 			}
 		}
 
-		bool operator ==(const ObjectRef &other)
+		bool operator ==(const ObjectRef &other) const
 		{
 			int rv = PyObject_RichCompareBool(_obj.get(), other._obj.get(), Py_EQ);
 			if(rv < 0)
@@ -557,7 +557,7 @@ namespace python
 	{
 		return o.isinstance(ty);
 	}
-
+	
 	inline bool issubclass(const ObjectRef &derived, const ObjectRef &base)
 	{
 		return derived.issubclass(base);

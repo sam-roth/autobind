@@ -39,12 +39,15 @@ add_library(
 	autobind_core
 	SHARED
 
-	src/Function.cpp
+	src/exports/Func.cpp
+	src/exports/Class.cpp
+	src/ClassData.cpp
+	src/CallGenerator.cpp
 	src/DiscoveryVisitor.cpp
-	src/Type.cpp
-	src/Getter.cpp
 	src/util.cpp
 	src/Module.cpp
+	src/TupleUnpacker.cpp
+	src/diagnostics.cpp
 )
 
 target_link_libraries(
