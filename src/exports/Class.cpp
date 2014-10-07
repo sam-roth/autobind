@@ -34,7 +34,8 @@ Class::Class(const clang::CXXRecordDecl &decl)
 		{
 			auto constructor = llvm::dyn_cast_or_null<clang::CXXConstructorDecl>(*it);
 			
-			if(!constructor->isCopyConstructor() && !constructor->isMoveConstructor())
+			if(!constructor->isCopyConstructor() && !constructor->isMoveConstructor()
+			   && constructor->getAccess() == clang::AS_public)
 			{
 				_constructor.addDecl(*constructor);
 			}
