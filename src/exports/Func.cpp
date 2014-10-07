@@ -131,6 +131,7 @@ void Constructor::codegenOverloadOrDefault(std::ostream &out, int n) const
 	static const StringTemplate top = R"EOF(
 	try
 	{
+		PyErr_Clear();
 		self->initialized = false;
 		{{unpackTuple}}
 		if({{unpackOk}})
