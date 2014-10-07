@@ -35,6 +35,11 @@ CXXFLAGS = ['-std=c++11',
             '-I' + AB_INCLUDE]
 
 
+# Suppress unused argument warning: This script isn't smart enough to figure
+# out which arguments autobind will use, so it provides it all of them.
+# This isn't much of a risk, considering that Clang will point out the unused arguments
+# during the build phase.
+ADDITIONAL_DRIVER_FLAGS = ['-Qunused-arguments']
 
 def get_cc1_flags(cflags):
 
@@ -46,14 +51,13 @@ def get_cc1_flags(cflags):
 
         stderr = stderr.decode()
 
-        sys.stderr.write(stderr)
 
         if p.returncode != 0:
             raise RuntimeError('Clang returned non-zero status %r.' % p.returncode)
 
     for line in stderr.splitlines():
         if '-cc1' in line:
-            return list(itertools.takewhile(lambda x: x != '-o', shlex.split(line)))
+            return ADDITIONAL_DRIVER_FLAGS + list(itertools.takewhile(lambda x: x != '-o', shlex.split(line)))
     else:
         raise RuntimeError("Couldn't infer cc1 flags from clang output:\n%s" % stderr)
 
@@ -88,7 +92,7 @@ class BindingGenerationFailedError(RuntimeError):
 def run_autobind(source):
     source = os.path.abspath(source)
     flags = get_autobind_flags(source)
-
+    
     with subprocess.Popen([AB, source, '--'] + flags,
                           stdout=subprocess.PIPE) as proc:
         stdout, _ = proc.communicate()
@@ -140,14 +144,19 @@ def main():
 
             lib_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
+            path = args.o
+            if path is None:
+                path = os.path.join(os.path.dirname(main_file),
+                                    stem + lib_suffix)
+
+
             subprocess.check_call([CXX] + CXXFLAGS
                                   + get_python_cflags()
                                   + get_python_ldflags()
                                   + other_files
                                   + [f.name]
-                                  + ['-shared', '-o', 
-                                     os.path.join(os.path.dirname(main_file),
-                                                  stem + lib_suffix)]) 
+                                  + ['-shared', '-o', path])
+                                                
 
 
 
@@ -165,6 +174,7 @@ def main():
 
     build_v = verbs.add_parser('build', help='generate binding code and compile it into a shared library')
     build_v.add_argument('-c', help='source files (the first is used as the autobind input)', required=True, action='append')
+    build_v.add_argument('-o', help='output file', type=str, default=None)
     build_v.set_defaults(func=build)
 
     def add_cxxflags(p):
