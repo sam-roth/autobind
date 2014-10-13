@@ -27,7 +27,7 @@ find_package(Boost)
 find_package(LLVM REQUIRED)
 find_package(Clang REQUIRED)
 find_package(Curses REQUIRED)
-
+find_package(ZLib REQUIRED)
 
 link_directories(
 	${LLVM_LIB_DIR}
@@ -91,6 +91,7 @@ target_link_libraries(
 	${CLANG_LIBS}
 	${LLVM_LIBS_CORE}
 	${CURSES_LIBRARIES}
+	${ZLIB_LIBRARIES}
 )
 
 ADD_PRECOMPILED_HEADER(autobind_core src/prefix.hpp)

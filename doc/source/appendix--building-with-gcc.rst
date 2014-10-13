@@ -16,7 +16,7 @@ Compilation Procedure
 =====================
 
 
-:you'll need:   • Clang ≥ 3.3 (with headers)
+:you'll need:   • Clang ≥ 3.5 (with headers)
                 • GCC ≥ 4.8
                 • Boost.Regex (libstdc++ has no regex support [≤ 4.8], so we'll use Boost as a standin)
                 • Python ≥ 3.3 (with headers)
@@ -26,7 +26,7 @@ Compilation Procedure
     
     If you're using Ubuntu, you can install these dependencies with::
         
-        $ sudo apt-get install build-essential libclang-3.4-dev clang-3.4 gcc-4.8 \
+        $ sudo apt-get install build-essential libclang-3.5-dev clang-3.5 gcc-4.8 \
             libboost-regex-dev cmake libpython3.4-dev python3.4-dev python3.4
 
 1. Install the dependencies

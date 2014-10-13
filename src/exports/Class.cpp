@@ -57,7 +57,7 @@ Class::Class(const clang::CXXRecordDecl &decl)
 				auto annot = attr->getAnnotation();
 				if(annot.startswith("pygetter:"))
 				{
-					auto d = make_unique<Descriptor>(annot.split(':').second, classData());
+					auto d = makeUnique<Descriptor>(annot.split(':').second, classData());
 					d->setGetter(*it);
 					mergeClassExport(std::move(d));
 					omit = true;
@@ -65,7 +65,7 @@ Class::Class(const clang::CXXRecordDecl &decl)
 				}
 				else if(annot.startswith("pysetter:"))
 				{
-					auto d = make_unique<Descriptor>(annot.split(':').second, classData());
+					auto d = makeUnique<Descriptor>(annot.split(':').second, classData());
 					d->setSetter(*it);
 					mergeClassExport(std::move(d));
 					omit = true;
@@ -75,7 +75,7 @@ Class::Class(const clang::CXXRecordDecl &decl)
 
 			if(!omit)
 			{
-				auto f = ::autobind::make_unique<Method>(name, classData());
+				auto f = makeUnique<Method>(name, classData());
 				f->addDecl(**it);
 				mergeClassExport(std::move(f));
 			}

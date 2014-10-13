@@ -47,9 +47,9 @@ void CallGenerator::codegen(std::ostream &out) const
 	)EOF";
 
 	std::string resultDecl;
-	if(!_decl->getResultType()->isVoidType())
+	if(!_decl->getReturnType()->isVoidType())
 	{
-		resultDecl = _decl->getResultType().getAsString() + " result = ";
+		resultDecl = _decl->getReturnType().getAsString() + " result = ";
 	}
 
 	top.into(out)
@@ -91,12 +91,12 @@ void CallGenerator::codegenSuccess(std::ostream &out) const
 {
 	out << "PyErr_Clear();\n";
 
-	auto ty = _decl->getResultType().getNonReferenceType();
+	auto ty = _decl->getReturnType().getNonReferenceType();
 	ty.removeLocalConst();
 	ty.removeLocalVolatile();
 	ty.removeLocalRestrict();
 	
-	if(_decl->getResultType()->isVoidType())
+	if(_decl->getReturnType()->isVoidType())
 	{
 		out << "Py_RETURN_NONE;\n";
 	}

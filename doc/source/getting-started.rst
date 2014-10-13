@@ -24,7 +24,7 @@ Building Autobind
 
 :you'll need:
     • CMake
-    • Clang ≥ 3.4 (with headers)
+    • Clang ≥ 3.5 (with headers)
     • LLVM libc++
     • Boost (headers only)
     • Python ≥ 3.3 (for running the wrapper script)

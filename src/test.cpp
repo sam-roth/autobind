@@ -124,7 +124,7 @@ int main()
 			{
 				funcDecl->dumpColor();
 
-				auto f = autobind::make_unique<autobind::Func>(funcDecl->getQualifiedNameAsString());
+				auto f = autobind::makeUnique<autobind::Func>(funcDecl->getQualifiedNameAsString());
 				f->addDecl(*funcDecl);
 				mod.addExport(std::move(f));
 			}
@@ -157,7 +157,7 @@ int main()
 			{
 				classDecl->dumpColor();
 
-				auto klass = autobind::make_unique<autobind::Class>(*classDecl);
+				auto klass = autobind::makeUnique<autobind::Class>(*classDecl);
 				klass->codegenDeclaration(std::cout);
 				klass->codegenDefinition(std::cout);
 			}

@@ -11,7 +11,9 @@
 #include "attributeStream.hpp"
 
 #include <clang/Sema/Sema.h>
+#include <clang/Sema/TemplateDeduction.h>
 #include <unordered_set>
+#include <array>
 
 namespace autobind {
 
@@ -20,7 +22,7 @@ std::string prototypeSpelling(clang::FunctionDecl *decl)
 	std::string result;
 	bool first = true;
 
-	result += decl->getResultType().getAsString();
+	result += decl->getReturnType().getAsString();
 	result += " ";
 	result += decl->getQualifiedNameAsString();
 
@@ -51,12 +53,18 @@ bool errorToDiag(Decl decl, const Func &func) {
 	catch(std::exception &exc)
 	{
 		auto &diags = decl->getASTContext().getDiagnostics();
-		unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, exc.what());
-		diags.Report(decl->getLocation(), id);
+
+		unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, "%0");
+		diags.Report(decl->getLocation(), id) << exc.what();
 		return false;
 	}
 };
 
+template <class T, size_t N>
+llvm::ArrayRef<T> asArrayRef(const std::array<T, N> &arr)
+{
+	return llvm::makeArrayRef(arr.data(), arr.size());
+}
 
 class DiscoveryVisitor
 : public clang::RecursiveASTVisitor<DiscoveryVisitor>
@@ -99,14 +107,126 @@ public:
 
 		if(_knownTypes.count(ty)) return true; // we will emit this specialization ourselves
 
-		clang::TemplateArgument args[] = {
-			clang::TemplateArgument(clang::QualType(ty, 0)),
+		std::array<clang::TemplateArgument, 2> args {{
+			clang::TemplateArgument(clang::QualType(ty, 0).getCanonicalType()),
 			clang::TemplateArgument(_pyConversion->getASTContext().VoidTy)
-		};
+		}};
 
 		void *insertPos = 0;
 
-		return _pyConversion->findSpecialization(args, 2, insertPos) != nullptr;
+
+// 		clang::QualType pyConvQual(_pyConversion->type, 0);
+
+// 		clang::QualifiedTemplateName tpl;
+		auto tname = clang::TemplateName(_pyConversion);
+
+// 		assert(!tname.isDependent());
+
+		clang::TemplateArgumentList tal(clang::TemplateArgumentList::OnStack, args.data(), args.size());
+
+// 		clang::TemplateArgumentListInfo talinfo;
+// 		talinfo.addArgument(clang::TemplateArgumentLoc(args[0], clang::TemplateArgumentLocInfo{}));
+
+
+		auto &sema = _compiler.getSema();
+
+
+
+		llvm::SmallVector<clang::ClassTemplatePartialSpecializationDecl *, 12> parspecs;
+
+		_pyConversion->getPartialSpecializations(parspecs);
+
+		for(auto parspec : parspecs)
+		{
+// 			parspec->dumpColor();
+			clang::sema::TemplateDeductionInfo info(clang::SourceLocation{});
+			auto deduction = sema.DeduceTemplateArguments(parspec,
+			                                              tal,
+			                                              info);
+
+
+			if(deduction == clang::Sema::TDK_Success)
+			{
+// 				std::cerr << "successful deduction: " << parspec->getNameAsString() << '\n';
+// 				parspec->dumpColor();
+				return true;
+			}
+		}
+
+// 		for(auto spec = _pyConversion->spec_begin(); spec != _pyConversion->spec_end(); ++spec)
+// 		{
+// 			if(auto specPartial = llvm::dyn_cast_or_null<clang::ClassTemplatePartialSpecializationDecl>(*spec))
+// 			{
+// 
+// 				specPartial->dumpColor();
+// 			// 			sema.DeduceTemplateArguments(
+// 			}
+// 			else
+// 			{
+// 				spec->dumpColor();
+// 			}
+// //
+// 		}
+// 
+// 		sema.DeduceTemplateArguments
+
+// 		clang::Scope sc;
+//
+// 		auto scope = sema.getScopeForContext(_pyConversion->getDeclContext());
+// 
+// 
+// 		llvm::SmallVector<clang::TemplateArgument, 4> talout;
+// 
+// 		sema.CheckTemplateArgumentList(_pyConversion,
+// 		                               _pyConversion->getLocation(),
+// 		                               talinfo,
+// 		                               true,
+// 		                               talout);
+// 
+// 
+// 		for(const auto &item : talout)
+// 		{
+// 			item
+// 		}
+// 
+
+
+
+// 		auto declres = sema.CheckClassTemplate(scope, clang::TTK_Class, clang::Sema::TUK_Reference,
+// 		                                       clang::SourceLocation(), clang::CXXScopeSpec(),
+// 		                                       _pyConversion->getIdentifier(), _pyConversion->getLocation(),
+// 		                                       nullptr,
+// 		                                       &
+
+// 		talinfo.addArgument(
+
+
+
+		// FIXME: I'm not sure what this is and what makes it 'canonical', but it seems to work.
+
+
+//
+// 		auto canonty = context.IntTy;
+// 
+// 
+// 		auto specty = context.getTemplateSpecializationType(tname,
+// 		                                                    args.data(),
+// 		                                                    args.size(),
+// 		                                                    canonty);
+// 
+// 		auto spectyCast = specty->getAs<clang::TemplateSpecializationType>();
+// 		assert(spectyCast);
+// 		spectyCast->dump();
+// 		auto specCanonTy = spectyCast->getCanonicalTypeUnqualified();
+// 		specCanonTy.dump();
+// // 		assert(specdecl);
+// 
+// // 		specdecl->dumpColor();
+// 
+// 		specty.dump();
+
+
+		return _pyConversion->findSpecialization(asArrayRef(args), insertPos);
 	}
 
 
@@ -181,7 +301,7 @@ public:
 	{
 // 		using namespace streams;
 
-		auto klass = ::autobind::make_unique<Class>(*decl);
+		auto klass = ::autobind::makeUnique<Class>(*decl);
 		klass->setModuleName(_modstack.back()->name());
 		_modstack.back()->addExport(std::move(klass));
 		_knownTypes.insert(decl->getTypeForDecl());
@@ -208,7 +328,7 @@ public:
 				}
 				else if(auto funcDecl = llvm::dyn_cast_or_null<clang::FunctionDecl>(target))
 				{
-					auto func = ::autobind::make_unique<Func>(decl->getNameAsString());
+					auto func = ::autobind::makeUnique<Func>(decl->getNameAsString());
 					func->addDecl(*funcDecl);
 					_modstack.back()->addExport(std::move(func));
 				}
@@ -325,7 +445,7 @@ public:
 
 		return errorToDiag(decl, [&]{
 			this->validateExportedFunctionDecl(decl);
-			auto func = ::autobind::make_unique<Func>(decl->getNameAsString());
+			auto func = ::autobind::makeUnique<Func>(decl->getNameAsString());
 			func->addDecl(*decl);
 			_modstack.back()->addExport(std::move(func));
         });
@@ -354,8 +474,8 @@ bool ConversionInfo::ensureConversionSpecializationExists(const clang::Decl *dec
 	{
 		auto &diags = _parent.context.getDiagnostics();
 		unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, 
-		                                    "No specialization of python::Conversion for type '" + qty.getAsString() + "'");
-		diags.Report(decl->getLocation(), id);
+		                                    "No specialization of python::Conversion for type %0");
+		diags.Report(decl->getLocation(), id) << qty;
 		return false;
 	}
 

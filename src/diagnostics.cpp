@@ -14,8 +14,8 @@ void emit(clang::DiagnosticsEngine::Level level,
           const std::string &msg)
 {
 	auto &diags = decl.getASTContext().getDiagnostics();
-	unsigned id = diags.getCustomDiagID(level, msg);
-	diags.Report(decl.getLocation(), id);
+	unsigned id = diags.getCustomDiagID(level, "%0");
+	diags.Report(decl.getLocation(), id) << msg;
 }
 
 

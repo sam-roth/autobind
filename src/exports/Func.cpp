@@ -199,7 +199,7 @@ bool Func::validate(const autobind::ConversionInfo &info) const
 			result = info.ensureConversionSpecializationExists(param, param->getType().getTypePtr()) && result;
 		}
 
-		auto resultTy = func->getResultType();
+		auto resultTy = func->getReturnType();
 		if(!resultTy->isVoidType())
 		{
 			result = info.ensureConversionSpecializationExists(func, resultTy.getTypePtr()) && result;
@@ -304,10 +304,10 @@ void Descriptor::codegenDefinition(std::ostream &out) const
 		if(_getter->param_size() != 0)
 			diag::stop(**_getter->param_begin(), "getter must have no parameters");
 
-		if(_getter->getResultType()->isVoidType())
+		if(_getter->getReturnType()->isVoidType())
 			diag::stop(*_getter, "getter must not return `void`.");
-
-		auto ty = _getter->getResultType().getNonReferenceType();
+			
+		auto ty = _getter->getReturnType().getNonReferenceType();
 		ty.removeLocalConst();
 		ty.removeLocalRestrict();
 		ty.removeLocalVolatile();

@@ -157,7 +157,7 @@ std::string createPythonSignature(const clang::FunctionDecl &decl)
 
 	std::stringstream ss;
 	ss << "(" << cat(args) << ")";
-	auto retTyString = decl.getResultType().getAsString();
+	auto retTyString = decl.getReturnType().getAsString();
 	if(retTyString != "void")
 	{
 		ss << " -> " << retTyString;

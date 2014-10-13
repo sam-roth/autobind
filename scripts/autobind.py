@@ -46,7 +46,7 @@ if os.path.exists(LIBCPP_MAVERICKS_WORKAROUND_PATH):
 # out which arguments autobind will use, so it provides it all of them.
 # This isn't much of a risk, considering that Clang will point out the unused arguments
 # during the build phase.
-ADDITIONAL_DRIVER_FLAGS = ['-Qunused-arguments']
+ADDITIONAL_DRIVER_FLAGS = ['-Qunused-arguments'] #, '-Wno-error=unused-command-line-argument-hard-error-in-future']
 
 def get_cc1_flags(cflags):
 
