@@ -42,7 +42,8 @@ std::string prototypeSpelling(clang::FunctionDecl *decl)
 }
 
 template <class Decl, class Func>
-bool errorToDiag(Decl decl, const Func &func) {
+bool errorToDiag(Decl decl, const Func &func) 
+{
 	try
 	{
 		func();
