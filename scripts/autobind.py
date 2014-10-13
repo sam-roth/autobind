@@ -30,10 +30,17 @@ AB_INCLUDE = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                           os.path.pardir,
                           'include')
 
+
+LIBCPP_MAVERICKS_WORKAROUND_PATH = '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../include/c++/v1'
+
+
+
 CXXFLAGS = ['-std=c++11',
             '-stdlib=libc++',
             '-I' + AB_INCLUDE]
 
+if os.path.exists(LIBCPP_MAVERICKS_WORKAROUND_PATH):
+    CXXFLAGS += ['-isystem', LIBCPP_MAVERICKS_WORKAROUND_PATH]
 
 # Suppress unused argument warning: This script isn't smart enough to figure
 # out which arguments autobind will use, so it provides it all of them.
@@ -92,7 +99,7 @@ class BindingGenerationFailedError(RuntimeError):
 def run_autobind(source):
     source = os.path.abspath(source)
     flags = get_autobind_flags(source)
-    
+
     with subprocess.Popen([AB, source, '--'] + flags,
                           stdout=subprocess.PIPE) as proc:
         stdout, _ = proc.communicate()
