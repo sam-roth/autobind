@@ -74,23 +74,6 @@ struct MappingTraits<autobind::DiagnosticRecord>
 		io.mapRequired("message", dr.message);
 	}
 };
-// template <> 
-// struct ScalarTraits<std::string>
-// {
-// 	// backported from newer llvm
-// 
-// 	static void output(const std::string &value, void *, llvm::raw_ostream &out)
-// 	{
-// 		out << value;
-// 	}
-// 
-// 	static StringRef input(StringRef scalar, void *, std::string &val) {
-// 		val = scalar;
-// 		return StringRef();
-// 	}
-// 
-// 	static bool mustQuote(StringRef) { return true; }
-// };
 
 }}  // llvm::yaml
 
@@ -98,61 +81,6 @@ struct MappingTraits<autobind::DiagnosticRecord>
 namespace autobind {
 
 
-static llvm::cl::OptionCategory toolCat("autobind options");
-
-
-namespace severity
-{
-	const auto Error     = clang::DiagnosticsEngine::Error;
-	const auto Warning   = clang::DiagnosticsEngine::Warning;
-	const auto Note      = clang::DiagnosticsEngine::Note;
-};
-
-// void emitMsg(clang::SourceManager &mgr,
-//              clang::DiagnosticsEngine &diags,
-//              clang::SourceLocation loc,
-//              const std::string &message,
-//              clang::DiagnosticsEngine::Level severity)
-// {
-// 
-// 	clang::FullSourceLoc fullLoc(loc, mgr);
-// 	unsigned id = diags.getCustomDiagID(severity, message);
-// 	clang::DiagnosticBuilder b = diags.Report(fullLoc, id);
-// 	b.setForceEmit();
-// }
-// 
-// class PythonPragmaHandler: public clang::PragmaHandler
-// {
-// public:
-// 	virtual void HandlePragma(clang::Preprocessor &pp,
-// 	                          clang::PragmaIntroducerKind introducer,
-// 	                          clang::Token &firstToken) override
-// 	{
-//
-// 		if(!clang::tok::isStringLiteral(firstToken.getKind()))
-// 		{
-// 
-// 			emitMsg(pp.getSourceManager(),
-// 			        pp.getDiagnostics(),
-// 			        firstToken.getLocation(),
-// 			        "`#pragma pymodule` must be followed by a string literal",
-// 			        severity::Error);
-// 			return;
-// 		}
-// 		else
-// 		{
-// 
-// 			auto string = clang::StringLiteralParser(&firstToken, 1, pp).GetString();
-// 
-// 			emitMsg(pp.getSourceManager(),
-// 			        pp.getDiagnostics(),
-// 			        firstToken.getLocation(),
-// 			        (boost::format("Found token with literal data: '%1%'.") % std::string(string)).str(),
-// 			        severity::Note);
-// 		}
-// 	}
-// };
-// 
 class FindFunctionDeclsAction: public clang::ASTFrontendAction
 {
 
@@ -174,13 +102,6 @@ public:
 		}
 
 		return true;
-	}
-
-	virtual bool BeginSourceFileAction(clang::CompilerInstance &ci, llvm::StringRef filename) override
-	{
-		bool result = clang::ASTFrontendAction::BeginSourceFileAction(ci, filename);
-		clang::Preprocessor &preproc = ci.getPreprocessor();
-		return result;
 	}
 
 	virtual clang::ASTConsumer
@@ -256,18 +177,11 @@ int main(int argc, const char **argv)
 	using namespace autobind;
 	using namespace clang::tooling;
 
-	for(const char **arg = argv; *arg; ++arg)
-	{
-		std::cerr << *arg << "\n";
-	}
-
 	const char *emitYamlDiag = getenv("AB_EMIT_YAML_DIAG");
 
 	llvm::cl::OptionCategory category("Autobind Options");
 	CommonOptionsParser optparse(argc, argv, category);
 
-
-// 	return 0;
 
 	ClangTool tool(optparse.getCompilations(),
 	               optparse.getSourcePathList());

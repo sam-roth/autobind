@@ -112,151 +112,34 @@ public:
 			clang::TemplateArgument(_pyConversion->getASTContext().VoidTy)
 		}};
 
+
+		// Full specialization (e.g., template <> struct Conversion<int>)
 		void *insertPos = 0;
+		if(_pyConversion->findSpecialization(asArrayRef(args), insertPos))
+			return true;
 
 
-// 		clang::QualType pyConvQual(_pyConversion->type, 0);
-
-// 		clang::QualifiedTemplateName tpl;
-		auto tname = clang::TemplateName(_pyConversion);
-
-// 		assert(!tname.isDependent());
-
+			
+		// Partial specialization (e.g., template <class T> struct Conversion<vector<T>>)
 		clang::TemplateArgumentList tal(clang::TemplateArgumentList::OnStack, args.data(), args.size());
-
-// 		clang::TemplateArgumentListInfo talinfo;
-// 		talinfo.addArgument(clang::TemplateArgumentLoc(args[0], clang::TemplateArgumentLocInfo{}));
-
 
 		auto &sema = _compiler.getSema();
 
-
-
 		llvm::SmallVector<clang::ClassTemplatePartialSpecializationDecl *, 12> parspecs;
-
 		_pyConversion->getPartialSpecializations(parspecs);
 
 		for(auto parspec : parspecs)
 		{
-// 			parspec->dumpColor();
 			clang::sema::TemplateDeductionInfo info(clang::SourceLocation{});
 			auto deduction = sema.DeduceTemplateArguments(parspec,
 			                                              tal,
 			                                              info);
 
-
 			if(deduction == clang::Sema::TDK_Success)
-			{
-// 				std::cerr << "successful deduction: " << parspec->getNameAsString() << '\n';
-// 				parspec->dumpColor();
 				return true;
-			}
 		}
 
-// 		for(auto spec = _pyConversion->spec_begin(); spec != _pyConversion->spec_end(); ++spec)
-// 		{
-// 			if(auto specPartial = llvm::dyn_cast_or_null<clang::ClassTemplatePartialSpecializationDecl>(*spec))
-// 			{
-// 
-// 				specPartial->dumpColor();
-// 			// 			sema.DeduceTemplateArguments(
-// 			}
-// 			else
-// 			{
-// 				spec->dumpColor();
-// 			}
-// //
-// 		}
-// 
-// 		sema.DeduceTemplateArguments
-
-// 		clang::Scope sc;
-//
-// 		auto scope = sema.getScopeForContext(_pyConversion->getDeclContext());
-// 
-// 
-// 		llvm::SmallVector<clang::TemplateArgument, 4> talout;
-// 
-// 		sema.CheckTemplateArgumentList(_pyConversion,
-// 		                               _pyConversion->getLocation(),
-// 		                               talinfo,
-// 		                               true,
-// 		                               talout);
-// 
-// 
-// 		for(const auto &item : talout)
-// 		{
-// 			item
-// 		}
-// 
-
-
-
-// 		auto declres = sema.CheckClassTemplate(scope, clang::TTK_Class, clang::Sema::TUK_Reference,
-// 		                                       clang::SourceLocation(), clang::CXXScopeSpec(),
-// 		                                       _pyConversion->getIdentifier(), _pyConversion->getLocation(),
-// 		                                       nullptr,
-// 		                                       &
-
-// 		talinfo.addArgument(
-
-
-
-		// FIXME: I'm not sure what this is and what makes it 'canonical', but it seems to work.
-
-
-//
-// 		auto canonty = context.IntTy;
-// 
-// 
-// 		auto specty = context.getTemplateSpecializationType(tname,
-// 		                                                    args.data(),
-// 		                                                    args.size(),
-// 		                                                    canonty);
-// 
-// 		auto spectyCast = specty->getAs<clang::TemplateSpecializationType>();
-// 		assert(spectyCast);
-// 		spectyCast->dump();
-// 		auto specCanonTy = spectyCast->getCanonicalTypeUnqualified();
-// 		specCanonTy.dump();
-// // 		assert(specdecl);
-// 
-// // 		specdecl->dumpColor();
-// 
-// 		specty.dump();
-
-
-		return _pyConversion->findSpecialization(asArrayRef(args), insertPos);
-	}
-
-
-	void validateExportedFunctionDecl(const clang::FunctionDecl *func)
-	{
-		// TODO: defer this until after visiting the entire TU
-
-#if 0
-		using namespace streams;
-		for(auto param : stream(func->param_begin(),
-		                        func->param_end()))
-		{
-			auto ty = param->getType().getNonReferenceType();
-			ty.removeLocalVolatile();
-			ty.removeLocalConst();
-			ty.removeLocalRestrict();
-			ty = ty.getCanonicalType();
-
-			if(!willConversionSpecializationExist(ty.getTypePtr()))
-			{
-				_pyConversion->dumpColor();
-				for(auto spec : stream(_pyConversion->spec_begin(),
-				                       _pyConversion->spec_end()))
-				{
-					spec->dumpColor();
-				}
-				throw std::runtime_error("No specialization of python::Conversion for type " + ty.getAsString());
-			}
-		}
-#endif
+		return false;
 	}
 
 	bool TraverseTranslationUnitDecl(clang::TranslationUnitDecl *decl)
@@ -444,7 +327,6 @@ public:
 		if(!checkInModule(decl)) return false;
 
 		return errorToDiag(decl, [&]{
-			this->validateExportedFunctionDecl(decl);
 			auto func = ::autobind::makeUnique<Func>(decl->getNameAsString());
 			func->addDecl(*decl);
 			_modstack.back()->addExport(std::move(func));
