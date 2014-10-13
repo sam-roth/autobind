@@ -3,30 +3,6 @@
 // Use of this source code is governed by a BSD-style license that can
 // be found in the COPYING file.
 
-#include <iostream>
-#include <utility>
-#include <vector>
-#include <unordered_map>
-
-#include <boost/regex.hpp>
-
-#include "clang/AST/AttrIterator.h"
-#include "clang/AST/Attr.h"
-#include "clang/Frontend/CompilerInstance.h"
-
-#include "clang/Frontend/FrontendActions.h"
-#include "clang/Tooling/Tooling.h"
-#include "llvm/Support/CommandLine.h"
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "clang/AST/ASTConsumer.h"
-#include "clang/AST/ASTContext.h"
-#include "clang/AST/RecursiveASTVisitor.h"
-#include "clang/Lex/Preprocessor.h"
-#include "clang/Lex/Pragma.h"
-#include "clang/Lex/LiteralSupport.h"
-#include "llvm/Support/YAMLTraits.h"
-#include "clang/Frontend/ChainedDiagnosticConsumer.h"
-
 #include "DiscoveryVisitor.hpp"
 
 #include "util.hpp"
@@ -55,7 +31,6 @@ struct DiagnosticRecord
 		llvm::SmallVector<char, 128> msgVec;
 		diag.FormatDiagnostic(msgVec);
 		message.assign(msgVec.begin(), msgVec.end());
-
 	}
 };
 
@@ -185,7 +160,7 @@ int main(int argc, const char **argv)
 
 	ClangTool tool(optparse.getCompilations(),
 	               optparse.getSourcePathList());
-	
+
 	std::string errorInfo;
 	std::unique_ptr<llvm::raw_fd_ostream> fout;
 	if(emitYamlDiag)

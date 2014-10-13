@@ -17,7 +17,6 @@ protected:
 	clang::ASTConsumer *CreateASTConsumer(clang::CompilerInstance &ci,
 	                                      llvm::StringRef path)
 	{
-// 		return nullptr; 
 		std::string pathString = path;
 		return newASTConsumer([pathString, &ci](clang::ASTContext &ctx) {
 			ModuleManager mgr;
@@ -28,10 +27,9 @@ protected:
 			{
 				mgr.module(item.first).setSourceTUPath(pathString);
 			}
-
+			
 			std::ofstream outStream("/tmp/output.cpp");
 			mgr.codegen(outStream);
-// 			mgr.codegen(std::cout);
 		});
 	}
 

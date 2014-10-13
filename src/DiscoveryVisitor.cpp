@@ -10,8 +10,6 @@
 #include "exports/Class.hpp"
 #include "attributeStream.hpp"
 
-#include <clang/Sema/Sema.h>
-#include <clang/Sema/TemplateDeduction.h>
 #include <unordered_set>
 #include <array>
 
