@@ -1,3 +1,8 @@
+// Copyright (c) 2014, Samuel A. Roth. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can
+// be found in the COPYING file.
+
 #pragma once
 #include <string>
 #include <ostream>
@@ -6,9 +11,13 @@
 #include <memory>
 #include <vector>
 #include <typeinfo>
+#include <llvm/Support/raw_os_ostream.h>
+
+#include "RawIndentOstream.hpp"
 #include "streamindent.hpp"
 #include "util.hpp"
 #include "regex.hpp"
+
 
 namespace autobind {
 
@@ -16,6 +25,17 @@ struct IStreamable
 {
 	virtual void write(std::ostream &os) const = 0;
 	virtual ~IStreamable() { }
+};
+
+struct RawStreamable: public IStreamable
+{
+	virtual void write(llvm::raw_ostream &os) const = 0;
+
+	virtual void write(std::ostream &os) const override
+	{
+		llvm::raw_os_ostream ros(os);
+		write(ros);
+	}
 };
 
 template <typename T>

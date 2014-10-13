@@ -80,6 +80,8 @@ add_library(
 	src/Module.cpp
 	src/TupleUnpacker.cpp
 	src/diagnostics.cpp
+	src/RawIndentOstream.cpp
+	src/DiagnosticSuppressor.cpp
 )
 
 

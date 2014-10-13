@@ -20,10 +20,10 @@ def check_errors(source, errors):
 
 def test_fail_no_conversion():
 	file = os.path.abspath('fail_no_conversion.cpp')
-
-	expected = [dict(filename=file, message="No specialization of python::Conversion for type 'class Foo'",
+	
+	expected = [dict(filename=file, message="No specialization of python::Conversion for type 'Foo'",
 	                 line=16, col=30),
-	            dict(filename=file, message="No specialization of python::Conversion for type 'class Foo'",
+	            dict(filename=file, message="No specialization of python::Conversion for type 'Foo'",
 	                 line=11, col=14)]
 
 	check_errors(file, expected)

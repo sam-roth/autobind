@@ -1,3 +1,7 @@
+// Copyright (c) 2014, Samuel A. Roth. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can
+// be found in the COPYING file.
 
 #include <string>
 #include <fstream>
@@ -7,18 +11,21 @@
 #include "DiscoveryVisitor.hpp"
 #include "Export.hpp"
 
+
 #include <clang/Frontend/FrontendPluginRegistry.h>
 
 using namespace autobind;
 
 class AutobindPluginAction: public clang::PluginASTAction
 {
+	std::string _outputFileName = "autobind_output.cpp";
 protected:
 	clang::ASTConsumer *CreateASTConsumer(clang::CompilerInstance &ci,
 	                                      llvm::StringRef path)
 	{
 		std::string pathString = path;
-		return newASTConsumer([pathString, &ci](clang::ASTContext &ctx) {
+		auto outputFileName = _outputFileName;
+		return newASTConsumer([outputFileName, pathString, &ci](clang::ASTContext &ctx) {
 			ModuleManager mgr;
 			discoverTranslationUnit(mgr, *ctx.getTranslationUnitDecl(), ci);
 
@@ -27,8 +34,8 @@ protected:
 			{
 				mgr.module(item.first).setSourceTUPath(pathString);
 			}
-			
-			std::ofstream outStream("/tmp/output.cpp");
+
+			std::ofstream outStream(outputFileName);
 			mgr.codegen(outStream);
 		});
 	}
@@ -36,10 +43,13 @@ protected:
 	bool ParseArgs(const clang::CompilerInstance &ci,
 	               const std::vector<std::string> &args)
 	{
-		return true;
+		if(args.size() == 1)
+		{
+			_outputFileName = args[0];
+		}
+
+		return args.size() <= 1;
 	}
-
-
 };
 
 
