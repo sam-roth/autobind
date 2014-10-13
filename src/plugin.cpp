@@ -1,4 +1,6 @@
 
+#include <string>
+#include <fstream>
 
 #include "util.hpp"
 
@@ -15,17 +17,21 @@ protected:
 	clang::ASTConsumer *CreateASTConsumer(clang::CompilerInstance &ci,
 	                                      llvm::StringRef path)
 	{
-		return newASTConsumer([path, &ci](clang::ASTContext &ctx) {
+// 		return nullptr; 
+		std::string pathString = path;
+		return newASTConsumer([pathString, &ci](clang::ASTContext &ctx) {
 			ModuleManager mgr;
 			discoverTranslationUnit(mgr, *ctx.getTranslationUnitDecl(), ci);
-			
+
 
 			for(const auto &item : mgr.moduleStream())
 			{
-				mgr.module(item.first).setSourceTUPath(path);
+				mgr.module(item.first).setSourceTUPath(pathString);
 			}
 
-			mgr.codegen(std::cout);
+			std::ofstream outStream("/tmp/output.cpp");
+			mgr.codegen(outStream);
+// 			mgr.codegen(std::cout);
 		});
 	}
 
@@ -35,7 +41,7 @@ protected:
 		return true;
 	}
 
-	
+
 };
 
 
