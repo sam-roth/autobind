@@ -103,7 +103,7 @@ Annotations
 Client-Specializable Templates
 ------------------------------
 
-.. cpp:class:: python::Conversion<T>
+.. cpp:class:: autobind::Conversion<T>
     
     Specialize this class template to teach autobind to perform Python type conversions.
 
@@ -118,14 +118,14 @@ Client-Specializable Templates
     Here's an example, taken from ``autobind.hpp``::
 
         template <>
-        struct python::Conversion<int>
+        struct autobind::Conversion<int>
         {
             static int load(PyObject *o)
             {
                 int res = PyLong_AsLong(o);
                 if(PyErr_Occurred())
                 {
-                    throw python::Exception();
+                    throw autobind::Exception();
                 }
                 return res;
             }
@@ -135,7 +135,7 @@ Client-Specializable Templates
                 auto res = PyLong_FromLong(i);
                 if(!res)
                 {
-                    throw python::Exception();
+                    throw autobind::Exception();
                 }
 
                 return res;
@@ -144,8 +144,8 @@ Client-Specializable Templates
 
 .. s*
 
-.. cpp:class:: python::protocols::Str<T>
-               python::protocols::Repr<T>
+.. cpp:class:: autobind::protocols::Str<T>
+               autobind::protocols::Repr<T>
 
     Specialize these class templates to implement the :py:meth:`~object.__str__` and
     :py:meth:`~object.__repr__` protocols, respectively.
@@ -163,7 +163,7 @@ Client-Specializable Templates
     Example::
 
         template <>
-        struct python::protocols::Repr<Duck>
+        struct autobind::protocols::Repr<Duck>
         {
             static std::string convert(const Duck &d)
             {
@@ -176,7 +176,7 @@ Python Objects
 --------------
 
 
-.. cpp:class:: python::ObjectRef
+.. cpp:class:: autobind::ObjectRef
 
  An automatically reference-counted reference to a Python :py:obj:`object`.
 
@@ -219,9 +219,9 @@ Python Objects
 
  .. cpp:function::  convert<T>() const
     
-    Convert this :cpp:class:`ObjectRef` to type `T` using :cpp:class:`python::Conversion\<T>`.
+    Convert this :cpp:class:`ObjectRef` to type `T` using :cpp:class:`autobind::Conversion\<T>`.
 
-    :return type: The return type of :cpp:func:`python::Conversion\<T>::load`.
+    :return type: The return type of :cpp:func:`autobind::Conversion\<T>::load`.
 
  .. cpp:function:: tryConverting<T>() const
     
@@ -233,7 +233,7 @@ Python Objects
 
 .. a*
 
-.. cpp:class:: python::ListRef: public python::ObjectRef
+.. cpp:class:: autobind::ListRef: public autobind::ObjectRef
     
     Holds a reference to a Python sequence, such as a :py:class:`list`.
 
@@ -254,7 +254,7 @@ Python Objects
         Equivalent to :py:func:`list.append`.
     
 
-.. cpp:class:: python::Exception: public std::exception
+.. cpp:class:: autobind::Exception: public std::exception
     
     This exception is thrown when an Autobind API catches a Python exception.
     If it reaches the Python API boundary, it is caught and
@@ -273,7 +273,7 @@ Python Objects
 
 .. s*
 
-.. cpp:class:: python::Handle<T>
+.. cpp:class:: autobind::Handle<T>
 
     :cpp:class:`Handle\<T>` is a non-nullable smart pointer for C++ types stored within
     a PyObject. It uses a combination of :cpp:class:`std::shared_ptr\<>` and Python reference
@@ -288,7 +288,7 @@ Python Objects
     .. cpp:function:: Handle(const ObjectRef &r)
 
         Construct this :cpp:class:`Handle\<T>` by using a reference-returning specialization
-        of :cpp:class:`python::Conversion\<T>`. 
+        of :cpp:class:`autobind::Conversion\<T>`. 
 
         :throws: An exception if the type conversion fails.
 
