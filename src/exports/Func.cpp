@@ -141,7 +141,7 @@ void Constructor::codegenOverloadOrDefault(std::ostream &out, int n) const
 			return (PyObject *)self;
 		}
 	}
-	catch(python::Exception &)
+	catch(autobind::Exception &)
 	{
 		Py_XDECREF(self);
 		return 0;
@@ -285,11 +285,11 @@ void Descriptor::codegenDefinition(std::ostream &out) const
 		{
 			try
 			{
-				PyObject *result = ::python::Conversion<{{type}}>::dump(self->object.{{func}}());
+				PyObject *result = ::autobind::Conversion<{{type}}>::dump(self->object.{{func}}());
 				PyErr_Clear();
 				return result;
 			}
-			catch(::python::Exception &exc)
+			catch(::autobind::Exception &exc)
 			{
 				return 0;
 			}
@@ -333,11 +333,11 @@ void Descriptor::codegenDefinition(std::ostream &out) const
 
 			try
 			{
-				self->object.{{func}}(::python::Conversion<{{type}}>::load(value));
+				self->object.{{func}}(::autobind::Conversion<{{type}}>::load(value));
 				PyErr_Clear();
 				return 0;
 			}
-			catch(::python::Exception &exc)
+			catch(::autobind::Exception &exc)
 			{
 				return -1;
 			}

@@ -48,7 +48,7 @@ void TupleUnpacker::addElement(const clang::VarDecl &decl)
 	else
 	{
 		_format += "O&";
-		elt.type = "::python::detail::ConversionFunc<"
+		elt.type = "::autobind::detail::ConversionFunc<"
 		                              + unqualQType.getAsString() + ">::Value";
 		elt.name = argIdent;
 		elt.msg = ("expected object convertible to " + unqualQType.getAsString() + " for argument "
@@ -120,7 +120,7 @@ void TupleUnpacker::codegen(std::ostream &out) const
 		| transformed([&](const StorageElt &e) {
 			if(!e.realType.empty()) // this could be done more elegantly
 			{
-				return ",\n &::python::detail::ConversionFunc<" + e.realType + ">::convert, &" + e.name;
+				return ",\n &::autobind::detail::ConversionFunc<" + e.realType + ">::convert, &" + e.name;
 			}
 			else
 			{

@@ -1,7 +1,9 @@
 
 
-#include "autobind.hpp"
+#include <autobind.hpp>
 #include <map>
+
+namespace python = autobind::python;
 
 pymodule     (example);
 pydocstring  ("example functions to be consumed by python");

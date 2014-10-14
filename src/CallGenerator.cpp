@@ -35,7 +35,7 @@ void CallGenerator::codegen(std::ostream &out) const
 
 			{{success}}
 		}
-		catch(::python::Exception &exc)
+		catch(::autobind::Exception &exc)
 		{
 			{{pythonException}}
 		}
@@ -102,7 +102,7 @@ void CallGenerator::codegenSuccess(std::ostream &out) const
 	}
 	else
 	{
-		out << "return ::python::Conversion<"
+		out << "return ::autobind::Conversion<"
 			<< ty.getAsString()
 			<< ">::dump(result);";
 	}

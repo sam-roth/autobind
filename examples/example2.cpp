@@ -1,6 +1,6 @@
 #include <sstream>
 
-#include "autobind.hpp"
+#include <autobind.hpp>
 
 pymodule(example2);
 

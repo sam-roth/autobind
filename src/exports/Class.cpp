@@ -125,7 +125,7 @@ void Class::codegenDeclaration(std::ostream &out) const
 	// TODO: handle noncopyable types
 	static const StringTemplate converterTemplate = R"EOF(
 	template <>
-	struct python::Conversion<{{typeName}}>
+	struct autobind::Conversion<{{typeName}}>
 	{
 		static PyObject *dump(const {{typeName}} &obj);
 		static {{typeName}} &load(PyObject *obj);
@@ -213,16 +213,16 @@ void Class::codegenDefinition(std::ostream &out) const
 		0,                                                                            /* tp_getattr */        
 		0,                                                                            /* tp_setattr */        
 		0,                                                                            /* tp_reserved */       
-		python::protocols::detail::ReprConverter<{{cppName}}, {{structName}}>::get(), /* tp_repr */
+		autobind::protocols::detail::ReprConverter<{{cppName}}, {{structName}}>::get(), /* tp_repr */
 		0,                                                                            /* tp_as_number */      
 		0,                                                                            /* tp_as_sequence */    
 		0,                                                                            /* tp_as_mapping */     
 		0,                                                                            /* tp_hash  */          
 		0,                                                                            /* tp_call */           
-		python::protocols::detail::StrConverter<{{cppName}}, {{structName}}>::get(),  /* tp_str */
+		autobind::protocols::detail::StrConverter<{{cppName}}, {{structName}}>::get(),  /* tp_str */
 		PyObject_GenericGetAttr,                                                      /* tp_getattro */       
 		PyObject_GenericSetAttr,                                                      /* tp_setattro */       
-		python::protocols::detail::BufferProcs<{{cppName}}, {{structName}}>::get(),   /* tp_as_buffer */      
+		autobind::protocols::detail::BufferProcs<{{cppName}}, {{structName}}>::get(),   /* tp_as_buffer */      
 		Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                                     /* tp_flags */          
 		"{{docstring}}",                                                              /* tp_doc */
 		0,                                                                            /* tp_traverse */       
@@ -259,10 +259,10 @@ void Class::codegenDefinition(std::ostream &out) const
 	// TODO: handle noncopyables
 
 	static const StringTemplate conversionImplTemplate = R"EOF(
-		PyObject * python::Conversion<{{typeName}}>::dump(const {{typeName}} &obj)
+		PyObject * autobind::Conversion<{{typeName}}>::dump(const {{typeName}} &obj)
 		{
 			PyTypeObject *ty = &{{structName}}_Type;
-
+			
 			{{structName}} *self = ({{structName}} *)ty->tp_alloc(ty, 0);
 
 			try
@@ -271,7 +271,7 @@ void Class::codegenDefinition(std::ostream &out) const
 				self->initialized = true;
 				return (PyObject *)self;
 			}
-			catch(python::Exception &)
+			catch(autobind::Exception &)
 			{
 				Py_XDECREF(self);
 				return 0;
@@ -283,12 +283,12 @@ void Class::codegenDefinition(std::ostream &out) const
 			}
 		}
 
-		{{typeName}} &python::Conversion<{{typeName}}>::load(PyObject *obj)
+		{{typeName}} &autobind::Conversion<{{typeName}}>::load(PyObject *obj)
 		{
 			int rv = PyObject_IsInstance(obj, (PyObject *) &{{structName}}_Type);
 			if(rv < 0)
 			{
-				throw python::Exception();
+				throw autobind::Exception();
 			}
 
 			if(rv == 1)

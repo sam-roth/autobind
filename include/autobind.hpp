@@ -37,8 +37,8 @@
 #endif
 
 
-namespace python
-{
+namespace autobind {
+inline namespace python {
 
 	using autobind::Optional;
 
@@ -373,7 +373,7 @@ namespace python
 
 		static ObjectRef borrow(PyObject *o)
 		{
-			return ObjectRef(::python::borrow(o));
+			return ObjectRef(::autobind::borrow(o));
 		}
 
 		static ObjectRef none()
@@ -1033,5 +1033,6 @@ namespace python
 		};
 	}
 
-}
+} // namespace python
+} // namespace autobind
 #endif // AUTOBIND_HPP_X4U6E9

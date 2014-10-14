@@ -111,7 +111,7 @@ public:
 			clang::TemplateArgument(_pyConversion->getASTContext().VoidTy)
 		}};
 
-
+		
 		// Full specialization (e.g., template <> struct Conversion<int>)
 		void *insertPos = 0;
 		if(_pyConversion->findSpecialization(asArrayRef(args), insertPos))
@@ -157,7 +157,7 @@ public:
 
 	bool VisitClassTemplateDecl(clang::ClassTemplateDecl *decl)
 	{
-		if(decl->getQualifiedNameAsString() == "python::Conversion")
+		if(decl->getQualifiedNameAsString() == "autobind::python::Conversion")
 		{
 			_pyConversion = decl;
 		}
@@ -355,7 +355,7 @@ bool ConversionInfo::ensureConversionSpecializationExists(const clang::Decl *dec
 	{
 		auto &diags = _parent.context.getDiagnostics();
 		unsigned id = diags.getCustomDiagID(clang::DiagnosticsEngine::Error, 
-		                                    "No specialization of python::Conversion for type %0");
+		                                    "No specialization of autobind::Conversion for type %0");
 		diags.Report(decl->getLocation(), id) << qty;
 		return false;
 	}
