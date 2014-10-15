@@ -98,6 +98,25 @@ public:
 	virtual void codegenGetSet(std::ostream &) const override;
 };
 
+/// ClassExport for fields
+class Field: public ClassExport
+{
+	const clang::FieldDecl *_field;
+	std::string _getterRef, _setterRef;
+	std::string escapedDocstring() const;
+public:
+	Field(const clang::FieldDecl *decl,
+	      const ClassData &classData);
+
+	bool isWritable() const;
+
+	virtual void codegenDeclaration(std::ostream &) const override;
+	virtual void codegenDefinition(std::ostream &) const override;
+	virtual void codegenMethodTable(std::ostream &) const override;
+	virtual void codegenGetSet(std::ostream &) const override;
+
+	virtual bool validate(const ConversionInfo &) const override;
+};
 
 class Method: public Func, public ClassExport
 {

@@ -360,7 +360,6 @@ bool ConversionInfo::ensureConversionSpecializationExists(const clang::Decl *dec
 		return false;
 	}
 
-
 	return true;
 }
 

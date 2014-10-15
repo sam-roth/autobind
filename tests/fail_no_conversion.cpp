@@ -17,3 +17,4 @@ pyexport void bar(const Foo &f)
 {
 }
 
+

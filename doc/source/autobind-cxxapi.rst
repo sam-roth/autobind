@@ -45,15 +45,15 @@ Annotations
 .. index:: pyexport (C macro)
 .. c:macro:: declaration annotation AB_EXPORT
         
-    Make a class or function available from Python. 
-    
+    Make a class, function, or member variable available from Python.
+
     Doxygen-style comments near the declaration will be provided to
     Python as docstrings.
 
     :keyword form: ``pyexport``
 
     For functions, place the annotation before the type name::
-        
+
         AB_EXPORT void hello()
         {
             std::cout << "Hello, world\n";
@@ -66,10 +66,18 @@ Annotations
 
     Annotate classes and structs by placing the annotation between the initial
     keyword and the name of the aggregate::
-        
+
         struct AB_EXPORT Spam { ... };
         class  AB_EXPORT Spam { ... };
 
+    Annotate member variables by placing ``AB_EXPORT`` between the type and the
+    variable name. The variable must be public::
+
+        struct AB_EXPORT Spam
+        {
+            unsigned long long AB_EXPORT expiration_date;
+        };
+        
 .. index:: pygetter (C macro), pysetter (C macro)
 .. c:macro:: member function annotation AB_GETTER(name)
              member function annotation AB_SETTER(name)
@@ -98,7 +106,7 @@ Annotations
 
 
 
-    
+
 
 Client-Specializable Templates
 ------------------------------

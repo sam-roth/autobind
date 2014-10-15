@@ -28,6 +28,16 @@ struct pyexport Keywords
 };
 
 
+struct pyexport Accessors
+{
+	Accessors(int foo)
+	: foo(foo) { }
+
+	/// docstring for foo
+	int pyexport foo;
+};
+
+
 struct pyexport Methods
 {
 	std::string s;
@@ -40,7 +50,7 @@ struct pyexport Methods
 	{
 		return "foo" + s;
 	}
-	
+
 	std::string bar() const
 	{
 		return "bar" + s;

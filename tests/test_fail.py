@@ -42,3 +42,11 @@ def test_fail_getter_result():
 	expected=[dict(filename=file, message='getter must not return `void`.', line=15, col=19)]
 	check_errors(file, expected)
 
+def test_fail_no_conversion2():
+	file = os.path.abspath('fail_no_conversion2.cpp')
+	expected = [dict(filename=file, message="No specialization of autobind::Conversion for type 'Foo'",
+	                 line=8, col=15)]
+
+	check_errors(file, expected)
+
+

@@ -80,9 +80,20 @@ Class::Class(const clang::CXXRecordDecl &decl)
 				mergeClassExport(std::move(f));
 			}
 		}
-
 	}
 
+
+	for(auto field : decl.fields())
+	{
+		for(auto attr : attributeStream(*field))
+		{
+			auto annot = attr->getAnnotation();
+			if(annot == "pyexport")
+			{
+				mergeClassExport(makeUnique<Field>(field, classData()));
+			}
+		}
+	}
 }
 
 void Class::mergeClassExport(std::unique_ptr<ClassExport> ex)
@@ -338,5 +349,18 @@ void Class::codegenInit(std::ostream &out) const
 		.set("name", name())
 		.expand();
 }
+
+bool Class::validate(const autobind::ConversionInfo &convInfo) const
+{
+	bool ok = true;
+
+	for(const auto &exp : _exports)
+	{
+		ok = exp.second->validate(convInfo) && ok;
+	}
+
+	return ok;
+}
+
 } // autobind
 

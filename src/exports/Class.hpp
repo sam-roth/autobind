@@ -47,6 +47,8 @@ public:
 	virtual void codegenMethodTable(std::ostream &) const override;
 	virtual void codegenInit(std::ostream &) const override;
 	virtual void merge(const Export &e) override;
+
+	bool validate(const autobind::ConversionInfo &) const override;
 };
 
 } // autobind

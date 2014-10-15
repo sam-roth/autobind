@@ -247,15 +247,23 @@ void Descriptor::setGetter(const clang::FunctionDecl *value)
 		_getterRef = "0";
 }
 
+
+namespace
+{
+	static const StringTemplate GetterProtoTemplate = R"EOF(
+	static PyObject *{{implName}}({{selfTypeName}} *self, void */*closure*/);
+	)EOF";
+
+	static const StringTemplate SetterProtoTemplate = R"EOF(
+	static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure);
+	)EOF";
+}
+
 void Descriptor::codegenDeclaration(std::ostream &out) const
 {
 	if(_getter)
 	{
-		static const StringTemplate tpl = R"EOF(
-		static PyObject *{{implName}}({{selfTypeName}} *self, void */*closure*/);
-		)EOF";
-
-		tpl.into(out)
+		GetterProtoTemplate.into(out)
 			.set("implName", _getterRef)
 			.set("selfTypeName", classData().wrapperRef())
 			.expand();
@@ -263,11 +271,7 @@ void Descriptor::codegenDeclaration(std::ostream &out) const
 
 	if(_setter)
 	{
-		static const StringTemplate tpl = R"EOF(
-		static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure);
-		)EOF";
-		
-		tpl.into(out)
+		SetterProtoTemplate.into(out)
 			.set("implName", _setterRef)
 			.set("selfTypeName", classData().wrapperRef())
 			.expand();
@@ -407,6 +411,140 @@ Method::Method(const std::string &name, const autobind::ClassData &classData)
 	setSelfTypeRef(classData.wrapperRef());
 }
 
+Field::Field(const clang::FieldDecl *decl, 
+             const autobind::ClassData &cdata)
+: autobind::Export(decl->getNameAsString())
+, autobind::ClassExport(decl->getNameAsString(), cdata)
+, _field(decl)
+, _getterRef(gensym(classData().wrapperRef() + "_get_" + decl->getNameAsString()))
+, _setterRef(isWritable()? gensym(classData().wrapperRef() + "_set_" + decl->getNameAsString()) : "0")
+{
+
+}
+
+
+void Field::codegenDeclaration(std::ostream &os) const
+{
+	GetterProtoTemplate.into(os)
+		.set("implName", _getterRef)
+		.set("selfTypeName", classData().wrapperRef())
+		.expand();
+
+	if(isWritable())
+	{
+		SetterProtoTemplate.into(os)
+			.set("implName", _setterRef)
+			.set("selfTypeName", classData().wrapperRef())
+			.expand();
+	}
+}
+
+
+void Field::codegenDefinition(std::ostream &out) const
+{
+	auto fieldTy = _field->getType();
+	fieldTy.removeLocalConst();
+	fieldTy.removeLocalRestrict();
+	fieldTy.removeLocalVolatile();
+
+	// getter
+	static const StringTemplate tpl = R"EOF(		
+	static PyObject *{{implName}}({{selfTypeName}} *self, void */*closure*/)
+	{
+		try
+		{
+			PyObject *result = ::autobind::Conversion<{{type}}>::dump(self->object.{{field}});
+			PyErr_Clear();
+			return result;
+		}
+		catch(::autobind::Exception &exc)
+		{
+			return 0;
+		}
+		catch(::std::exception &exc)
+		{
+			PyErr_SetString(PyExc_RuntimeError, exc.what());
+			return 0;
+		}
+	}
+	)EOF";
+
+
+	tpl.into(out)
+		.set("implName", _getterRef)
+		.set("selfTypeName", classData().wrapperRef())
+		.set("type", fieldTy.getCanonicalType().getAsString())
+		.set("field", _field->getNameAsString())
+		.expand();
+
+	if(isWritable())
+	{
+		static const StringTemplate tpl = R"EOF(
+		static int {{implName}}({{selfTypeName}} *self, PyObject *value, void *closure)
+		{
+			if(!value)
+			{
+				PyErr_SetString(PyExc_TypeError, "Cannot delete attribute.");
+				return -1;
+			}
+
+			try
+			{
+				self->object.{{field}} = ::autobind::Conversion<{{type}}>::load(value);
+				PyErr_Clear();
+				return 0;
+			}
+			catch(::autobind::Exception &exc)
+			{
+				return -1;
+			}
+			catch(::std::exception &exc)
+			{
+				PyErr_SetString(PyExc_RuntimeError, exc.what());
+				return -1;
+			}
+		}
+		)EOF";
+
+		tpl.into(out)
+			.set("implName", _setterRef)
+			.set("selfTypeName", classData().wrapperRef())
+			.set("type", fieldTy.getCanonicalType().getAsString())
+			.set("field", _field->getNameAsString())
+			.expand();
+	}
+}
+
+bool Field::isWritable() const
+{
+	return !_field->getType().isConstQualified();
+}
+
+
+void Field::codegenMethodTable(std::ostream &) const
+{
+	// intentionally left blank
+}
+
+std::string Field::escapedDocstring() const
+{
+	return processDocString(findDocumentationComments(*_field));
+}
+
+
+void Field::codegenGetSet(std::ostream &out) const
+{
+	out << "{(char *)\"" << name() << "\", "
+		<< "(getter) " << _getterRef << ", "
+		<< "(setter) " << _setterRef << ", "
+		<< "(char *)\"" << escapedDocstring() << "\"},\n";
+}
+
+bool Field::validate(const autobind::ConversionInfo &convInfo) const
+{
+	return convInfo.ensureConversionSpecializationExists(_field,
+	                                                     _field->getType().getTypePtr());
+}
 
 
 

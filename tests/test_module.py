@@ -1,7 +1,6 @@
 
 import module
-
-
+import pytest
 
 def test_constructor():
 	# TODO: constructor docstrings
@@ -93,6 +92,24 @@ def test_constructor_overload():
 	assert module.ConstructorOverload(1).get() == 1
 	assert module.ConstructorOverload(1,1).get() == 2
 
+
+def test_field_getters():
+	acc = module.Accessors(1234)
+	assert acc.foo == 1234
+
+def test_field_setters():
+	acc = module.Accessors(0)
+	acc.foo = 5678
+	assert acc.foo == 5678
+
+def test_field_setter_validates_type():
+	acc = module.Accessors(0)
+
+	with pytest.raises(TypeError):
+		acc.foo = 'abcd'
+
+def test_field_docstring():
+	assert module.Accessors.foo.__doc__.strip() == 'docstring for foo'
 
 def test_methods():
 	m = module.Methods('baz')
