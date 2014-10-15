@@ -115,3 +115,12 @@ def test_methods():
 	m = module.Methods('baz')
 	assert m.foo() == 'foobaz'
 	assert m.bar() == 'barbaz'
+
+
+def test_exception_message():
+	def callback():
+		raise RuntimeError('foo')
+
+	assert module.get_exception_message(callback) == 'foo'
+
+

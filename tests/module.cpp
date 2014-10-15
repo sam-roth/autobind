@@ -142,3 +142,20 @@ pyexport std::string overload(int) { return "int"; }
 pyexport std::string overload(const std::string &) { return "std::string"; }
 pyexport std::string overload(int, int) { return "int, int"; }
 
+
+pyexport autobind::Optional<std::string> get_exception_message(autobind::ObjectRef callback)
+{
+	try
+	{
+		callback();
+	}
+	catch(autobind::Exception &exc)
+	{
+		return std::string(exc.what());
+	}
+
+	return {};
+}
+
+
+
