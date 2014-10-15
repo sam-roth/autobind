@@ -75,8 +75,7 @@ void Func::codegenDefinition(std::ostream &out) const
 	out << "}\n";
 }
 
-
-void Func::codegenMethodTable(std::ostream &out) const
+std::string Func::docstringEscaped() const
 {
 	std::string docstringEscaped;
 	for(auto decl : _decls)
@@ -85,10 +84,10 @@ void Func::codegenMethodTable(std::ostream &out) const
 		{
 			docstringEscaped += "\\n";
 		}
-
+	
 		docstringEscaped += createPythonSignature(*decl);
 		docstringEscaped += "\\n";
-
+	
 		auto thisOverloadDocEscaped = processDocString(findDocumentationComments(*decl));
 		if(!thisOverloadDocEscaped.empty())
 		{
@@ -97,10 +96,15 @@ void Func::codegenMethodTable(std::ostream &out) const
 		}
 	}
 
+	return docstringEscaped;
+}
+
+void Func::codegenMethodTable(std::ostream &out) const
+{
 	out << "{"
 		<< "\"" << name() << "\", "
 		<< "(PyCFunction) &" << _implRef << ", METH_VARARGS | METH_KEYWORDS, "
-		<< "\"" << docstringEscaped << "\""
+		<< "\"" << docstringEscaped() << "\""
 		<< "},\n";
 }
 

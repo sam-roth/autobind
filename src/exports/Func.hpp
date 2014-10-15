@@ -58,6 +58,8 @@ public:
 	virtual void merge(const Export &e) override;
 	virtual bool validate(const ConversionInfo &) const;
 
+	std::string docstringEscaped() const;
+
 	virtual ~Func() { }
 };
 
@@ -82,7 +84,6 @@ class Descriptor: public ClassExport
 	const clang::FunctionDecl *_setter = nullptr, *_getter = nullptr;
 	std::string _getterRef="0", _setterRef="0";
 	std::string escapedDocstring() const;
-
 public:
 	Descriptor(const std::string &name,
 	           const ClassData &classData);

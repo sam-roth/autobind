@@ -9,11 +9,14 @@ def test_constructor():
 	assert k.bar == 'abcd'
 	assert k.baz == 'efg'
 
+def test_constructor_docstring():
+	doc = module.Keywords.__doc__.strip()
+	assert doc == '(foo: int, bar: const char *, baz: std::string)'
+
 def test_constructor_kw():
 	k = module.Keywords(foo=1,
 	                    bar='abcd',
 	                    baz='efg')
-
 	assert k.foo == 1
 	assert k.bar == 'abcd'
 	assert k.baz == 'efg'
@@ -92,7 +95,6 @@ def test_constructor_overload():
 	assert module.ConstructorOverload(1).get() == 1
 	assert module.ConstructorOverload(1,1).get() == 2
 
-
 def test_field_getters():
 	acc = module.Accessors(1234)
 	assert acc.foo == 1234
@@ -116,11 +118,9 @@ def test_methods():
 	assert m.foo() == 'foobaz'
 	assert m.bar() == 'barbaz'
 
-
 def test_exception_message():
 	def callback():
 		raise RuntimeError('foo')
 
 	assert module.get_exception_message(callback) == 'foo'
-
 
