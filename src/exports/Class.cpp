@@ -16,7 +16,7 @@
 #include "../diagnostics.hpp"
 
 namespace autobind {
-	
+
 Class::Class(const clang::CXXRecordDecl &decl)
 : Export(decl.getNameAsString())
 , _decl(decl)
@@ -246,16 +246,25 @@ void Class::codegenDefinition(std::ostream &out) const
 	)EOF";
 
 
+	auto docstringEscaped = _constructor.docstringEscaped();
+	if(!docstringEscaped.empty())
+	{
+		docstringEscaped += "\\n\\n";
+	}
+
+	docstringEscaped += processDocString(findDocumentationComments(_decl));
+
+
 	typeObjectTemplate.into(out)
 		.set("structName", _selfTypeRef)
 		.set("moduleName", _moduleName)
 		.set("name", name())
 		.set("cppName", _decl.getQualifiedNameAsString())
 		.set("typeName", _decl.getQualifiedNameAsString())
-		.set("docstring", processDocString(findDocumentationComments(_decl)))
+		.set("docstring", docstringEscaped)
 		.set("constructorRef", _constructor.implRef())
 		.expand();
-
+		
 	// TODO: handle noncopyables
 
 	static const StringTemplate conversionImplTemplate = R"EOF(

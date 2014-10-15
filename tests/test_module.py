@@ -10,11 +10,14 @@ def test_constructor():
 	assert k.bar == 'abcd'
 	assert k.baz == 'efg'
 
+def test_constructor_docstring():
+	doc = module.Keywords.__doc__.strip()
+	assert doc == '(foo: int, bar: const char *, baz: std::string)'
+
 def test_constructor_kw():
 	k = module.Keywords(foo=1,
 	                    bar='abcd',
 	                    baz='efg')
-
 	assert k.foo == 1
 	assert k.bar == 'abcd'
 	assert k.baz == 'efg'
@@ -93,8 +96,10 @@ def test_constructor_overload():
 	assert module.ConstructorOverload(1).get() == 1
 	assert module.ConstructorOverload(1,1).get() == 2
 
-
 def test_methods():
 	m = module.Methods('baz')
 	assert m.foo() == 'foobaz'
 	assert m.bar() == 'barbaz'
+
+
+
