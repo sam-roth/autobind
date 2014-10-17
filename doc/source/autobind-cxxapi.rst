@@ -274,10 +274,11 @@ Python Objects
 
     .. cpp:function:: const char *what() const noexcept
 
-        Always returns ``"<python exception>"`` for now. I plan to
-        wire this up to show the :py:func:`repr` of the Python exception.
+        Returns the current exception's ``__str__``.
 
- 
+    .. cpp:function:: ObjectRef asObject() const
+
+        Returns the currently active exception.
 
 .. s*
 
